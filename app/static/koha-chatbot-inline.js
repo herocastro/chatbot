@@ -293,12 +293,15 @@
     if (c === "b" && t && t.indexOf("found in the catalog") !== -1) {
       return renderCatalogCards(t, ts);
     }
-    var html = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-      '<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>');
-    html = html.replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g,
-      '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$2</a>');
-    d.innerHTML = html;
-    // Render image below text if provided
+    // Only render text if there is text content
+    if (t && t.trim()) {
+      var html = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+        '<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>');
+      html = html.replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g,
+        '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$2</a>');
+      d.innerHTML = html;
+    }
+    // Render image if provided
     if (imgUrl && c === "b") {
       // Make relative URLs absolute using the chatbot API base
       var resolvedImgUrl = imgUrl;
@@ -306,15 +309,7 @@
         resolvedImgUrl = CHATBOT_API + imgUrl;
       }
       var imgWrap = document.createElement("div");
-      imgWrap.style.cssText = "margin-top:8px";
-      // Always show a clickable link
-      var link = document.createElement("a");
-      link.href = resolvedImgUrl;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "🖼️ View image";
-      link.style.cssText = "font-size:.82rem;color:#0E553F;text-decoration:underline;cursor:pointer;display:block;margin-bottom:6px";
-      imgWrap.appendChild(link);
+      imgWrap.style.cssText = t && t.trim() ? "margin-top:8px" : "";
       // Also try to show inline image
       var img = document.createElement("img");
       img.src = resolvedImgUrl;
@@ -662,7 +657,7 @@
           });
         return;
       }
-      hideTyping(); if (d.reply) addMsg(d.reply, "b", d.timestamp, d.image_url || null);
+      hideTyping(); if (d.reply || d.image_url) addMsg(d.reply || "", "b", d.timestamp, d.image_url || null);
     })
     .catch(function (err) {
       hideTyping();
