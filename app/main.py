@@ -496,6 +496,19 @@ async def chat(request: ChatRequest):
         reply, _img_url = handle_library_info_query(
             client, request.message, library_info, history
         )
+        # If there's an image, append its absolute URL to the reply text.
+        # This works with any version of the widget since URLs are rendered as links.
+        if _img_url:
+            base = str(request.base_url).rstrip("/")
+            if _img_url.startswith("/"):
+                abs_img_url = base + _img_url
+            elif _img_url.startswith("data:image/"):
+                abs_img_url = None  # skip data URLs — too large for reply text
+            else:
+                abs_img_url = _img_url
+            if abs_img_url:
+                reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {abs_img_url}"
+            _img_url = None  # don't send separately, it's in the reply text now
         # Store conversation and return with image if present
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
