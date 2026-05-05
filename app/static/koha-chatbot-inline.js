@@ -305,9 +305,12 @@
     d.innerHTML = html;
     // Render image below text if provided
     if (imgUrl && c === "b") {
+      // Make relative URLs absolute using the chatbot API base
+      var resolvedImgUrl = imgUrl;
+      if (imgUrl.startsWith("/")) {
+        resolvedImgUrl = CHATBOT_API + imgUrl;
+      }
       var img = document.createElement("img");
-      // Resolve relative image URLs against the chatbot API origin
-      var resolvedImgUrl = (imgUrl.startsWith("/") ? CHATBOT_API + imgUrl : imgUrl);
       img.src = resolvedImgUrl;
       img.alt = "Reply image";
       img.style.cssText = "display:block;max-width:100%;border-radius:8px;margin-top:8px;cursor:pointer";
