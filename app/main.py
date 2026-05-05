@@ -498,13 +498,12 @@ async def chat(request: ChatRequest):
         )
         # If there's an image, append its absolute URL to the reply text.
         # This works with any version of the widget since URLs are rendered as links.
-        if _img_url and (_img_url.startswith("/api/image/") or _img_url.startswith("/admin/api/image/")):
+        if _img_url and ("/api/image/" in _img_url):
             try:
-                # Normalise path — strip any /admin prefix, always use /api/image/<key>
-                clean_path = _img_url.replace("/admin/api/image/", "/api/image/")
-                chatbot_url = os.environ.get("CHATBOT_PUBLIC_URL", "").rstrip("/")
-                if not chatbot_url:
-                    chatbot_url = str(request.base_url).rstrip("/")
+                # Extract just the /api/image/<key> part regardless of any prefix
+                key_start = _img_url.find("/api/image/")
+                clean_path = _img_url[key_start:]
+                chatbot_url = os.environ.get("CHATBOT_PUBLIC_URL", "https://koha-chatbot-one.vercel.app").rstrip("/")
                 abs_img_url = chatbot_url + clean_path
                 reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {abs_img_url}"
             except Exception:
