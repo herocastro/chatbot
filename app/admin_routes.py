@@ -281,14 +281,13 @@ async def update_ai_settings(payload: dict):
 
 @router.post("/upload-image")
 async def upload_image(request: Request):
-    """Accept an image upload and return it as a base64 data URL.
+    """Accept an image upload, store it in DB under a unique key, return /api/image/<key> URL.
 
-    The data URL is returned directly to the admin UI, which saves it as the
-    FAQ's image_url field inside library_info_json. This avoids a separate DB
-    key lookup and works reliably on serverless platforms where /tmp is ephemeral.
-    Max size: 1 MB raw (keeps FAQ JSON within Turso row limits).
+    The image is stored under key 'faq_image_<uuid>' in dashboard_settings.
+    Returns a /api/image/<key> URL that the widget fetches directly.
+    Images should be pre-compressed client-side; max size: 200 KB raw.
     """
-    MAX_BYTES = 1 * 1024 * 1024  # 1 MB
+    MAX_BYTES = 200 * 1024  # 200 KB — client-side compression keeps images well under this
 
     try:
         form = await request.form()
@@ -302,15 +301,20 @@ async def upload_image(request: Request):
 
         data = await file.read()
         if len(data) > MAX_BYTES:
-            return JSONResponse(status_code=400, content={"error": "Image too large. Maximum size is 1 MB."})
+            return JSONResponse(status_code=400, content={"error": f"Image too large ({len(data)//1024} KB). Maximum size is 200 KB. Please compress the image before uploading."})
 
-        import base64
+        import base64, uuid as _uuid
         b64 = base64.b64encode(data).decode("ascii")
         data_url = f"data:{content_type};base64,{b64}"
 
-        # Return the data URL directly — the admin UI stores it as image_url in the FAQ,
-        # which is persisted inside library_info_json. No separate DB key needed.
-        return {"url": data_url}
+        # Store image in DB under a unique key
+        img_key = f"faq_image_{_uuid.uuid4().hex}"
+        from app.staff_routes import staff_store as _staff_store
+        if _staff_store is not None:
+            _staff_store.update_settings({img_key: data_url})
+
+        # Return a relative URL — the widget prepends CHATBOT_API (the chatbot origin)
+        return {"url": f"/api/image/{img_key}"}
     except Exception:
         logger.exception("Failed to process image upload")
         return JSONResponse(status_code=500, content={"error": "Failed to process image upload"})
