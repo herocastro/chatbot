@@ -287,7 +287,7 @@ async def upload_image(request: Request):
     Max size: 512 KB after base64 encoding (~384 KB raw).
     """
     from fastapi import Request as _Request
-    MAX_BYTES = 512 * 1024  # 512 KB
+    MAX_BYTES = 3 * 1024 * 1024  # 3 MB (base64 ~4 MB, under Vercel's 4.5 MB body limit)
 
     try:
         form = await request.form()
@@ -301,7 +301,7 @@ async def upload_image(request: Request):
 
         data = await file.read()
         if len(data) > MAX_BYTES:
-            return JSONResponse(status_code=400, content={"error": f"Image too large. Maximum size is 512 KB."})
+            return JSONResponse(status_code=400, content={"error": f"Image too large. Maximum size is 3 MB."})
 
         import base64
         b64 = base64.b64encode(data).decode("ascii")
