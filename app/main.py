@@ -288,6 +288,32 @@ async def get_ai_config():
     )
 
 
+@app.get("/api/image/{img_key}")
+async def get_image(img_key: str):
+    """Serve a stored FAQ image by its DB key."""
+    try:
+        from app.staff_routes import staff_store as _ss
+        if _ss is None:
+            return JSONResponse(status_code=404, content={"error": "Not found"})
+        data_url = _ss.get_setting(img_key)
+        if not data_url or not data_url.startswith("data:image/"):
+            return JSONResponse(status_code=404, content={"error": "Image not found"})
+        # Parse data URL: data:<mime>;base64,<data>
+        import base64
+        header, b64data = data_url.split(",", 1)
+        mime = header.split(":")[1].split(";")[0]
+        img_bytes = base64.b64decode(b64data)
+        from fastapi.responses import Response as _Resp
+        return _Resp(
+            content=img_bytes,
+            media_type=mime,
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    except Exception:
+        logger.exception("Failed to serve image %s", img_key)
+        return JSONResponse(status_code=500, content={"error": "Failed to serve image"})
+
+
 @app.get("/")
 async def root():
     """Root endpoint — confirms the API is running."""

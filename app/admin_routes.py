@@ -281,10 +281,11 @@ async def update_ai_settings(payload: dict):
 
 @router.post("/upload-image")
 async def upload_image(request: Request):
-    """Accept an image upload and store it as a base64 data URL.
+    """Accept an image upload, store it separately in DB, return a reference URL.
 
-    Returns the data URL which can be used directly as an image src.
-    Max size: 3 MB raw (~4 MB base64, under Vercel's 4.5 MB body limit).
+    The image is stored under key 'faq_image_<uuid>' in dashboard_settings.
+    Returns a /api/image/<key> URL that the widget fetches directly.
+    Max size: 3 MB raw.
     """
     MAX_BYTES = 3 * 1024 * 1024  # 3 MB
 
@@ -300,13 +301,20 @@ async def upload_image(request: Request):
 
         data = await file.read()
         if len(data) > MAX_BYTES:
-            return JSONResponse(status_code=400, content={"error": f"Image too large. Maximum size is 3 MB."})
+            return JSONResponse(status_code=400, content={"error": "Image too large. Maximum size is 3 MB."})
 
-        import base64
+        import base64, uuid as _uuid
         b64 = base64.b64encode(data).decode("ascii")
         data_url = f"data:{content_type};base64,{b64}"
 
-        return {"url": data_url}
+        # Store image separately in DB under a unique key
+        img_key = f"faq_image_{_uuid.uuid4().hex}"
+        from app.staff_routes import staff_store as _staff_store
+        if _staff_store is not None:
+            _staff_store.update_settings({img_key: data_url})
+
+        # Return a server-side URL so the FAQ only stores a short key reference
+        return {"url": f"/api/image/{img_key}"}
     except Exception:
         logger.exception("Failed to process image upload")
         return JSONResponse(status_code=500, content={"error": "Failed to process image upload"})
