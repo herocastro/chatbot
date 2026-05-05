@@ -281,13 +281,12 @@ async def update_ai_settings(payload: dict):
 
 @router.post("/upload-image")
 async def upload_image(request: Request):
-    """Accept an image upload and store it as a base64 data URL in the DB.
+    """Accept an image upload and store it as a base64 data URL.
 
     Returns the data URL which can be used directly as an image src.
-    Max size: 512 KB after base64 encoding (~384 KB raw).
+    Max size: 3 MB raw (~4 MB base64, under Vercel's 4.5 MB body limit).
     """
-    from fastapi import Request as _Request
-    MAX_BYTES = 3 * 1024 * 1024  # 3 MB (base64 ~4 MB, under Vercel's 4.5 MB body limit)
+    MAX_BYTES = 3 * 1024 * 1024  # 3 MB
 
     try:
         form = await request.form()
