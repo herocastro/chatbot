@@ -496,6 +496,29 @@ async def chat(request: ChatRequest):
         reply, _img_url = handle_library_info_query(
             client, request.message, library_info, history
         )
+        # If image_url is a data URL, find its existing key in the DB and embed a
+        # /api/image/<key> link into the reply text. This avoids sending 400KB+ base64
+        # in the JSON response. We look up the key rather than storing a new copy.
+        if _img_url and _img_url.startswith("data:image/"):
+            try:
+                from app.staff_routes import staff_store as _ss_img
+                if _ss_img is not None:
+                    all_settings = _ss_img.get_all_settings()
+                    _img_key = None
+                    for k, v in all_settings.items():
+                        if k.startswith("faq_image_") and v == _img_url:
+                            _img_key = k
+                            break
+                    if _img_key:
+                        _img_link = f"{str(request.base_url).rstrip('/')}/api/image/{_img_key}"
+                        reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {_img_link}"
+                    else:
+                        # Image not stored under a key — embed a short notice
+                        reply = (reply + "\n\n" if reply else "") + "🖼️ (Image available — please view in the admin panel)"
+                    _img_url = None
+            except Exception:
+                logger.exception("Failed to resolve data URL to image key")
+                _img_url = None
         # Store conversation and return with image if present
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
