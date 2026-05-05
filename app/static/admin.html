@@ -546,7 +546,7 @@
           <label for="li-d-image">Image <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
           <p class="ai-hint">Upload an image or paste a URL. Shown below the bot reply in the widget.</p>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="url" id="li-d-image" placeholder="https://example.com/image.jpg" aria-label="Image URL" style="flex:1;min-width:0">
+            <input type="text" id="li-d-image" placeholder="https://example.com/image.jpg" aria-label="Image URL" style="flex:1;min-width:0">
             <label class="li-upload-btn" for="li-d-image-file" aria-label="Upload image">📁 Upload</label>
             <input type="file" id="li-d-image-file" accept="image/*" style="display:none" aria-label="Choose image file">
           </div>
@@ -1703,7 +1703,12 @@
         var preview = document.getElementById("li-d-image-preview");
         var thumb = document.getElementById("li-d-image-thumb");
         if (url && url.trim()) {
-          thumb.src = url.trim();
+          // Resolve relative URLs against the current page origin (admin is on Vercel)
+          var resolved = url.trim();
+          if (resolved.startsWith("/")) {
+            resolved = window.location.origin + resolved;
+          }
+          thumb.src = resolved;
           preview.style.display = "block";
         } else {
           preview.style.display = "none";
