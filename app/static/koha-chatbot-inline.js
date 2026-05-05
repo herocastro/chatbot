@@ -173,16 +173,8 @@
   }
 
   // FAQ buttons — loaded from server
-  // FAQ data map — keyed by question text, populated when FAQs are fetched
-  var _faqDataMap = {};
-
   function buildFaqHtml(faqs) {
     if (!faqs || faqs.length === 0) return "";
-    // Rebuild the lookup map every time FAQs are rendered
-    _faqDataMap = {};
-    faqs.forEach(function(f) {
-      _faqDataMap[f.question] = { content: f.content || "", image_url: f.image_url || "" };
-    });
     return faqs.map(function(f) {
       return '<button class="lc-faq" data-q="' + f.question.replace(/"/g, "&quot;") + '">' + f.label + '</button>';
     }).join("");
@@ -495,23 +487,6 @@
     e.stopPropagation();
     var question = faq.getAttribute("data-q");
     if (!question) return;
-
-    // Look up pre-stored content and image from the FAQ data map
-    var faqEntry = _faqDataMap[question] || {};
-    var content = faqEntry.content || "";
-    var imageUrl = faqEntry.image_url || "";
-
-    // If the FAQ has pre-stored content or image, render immediately without an API round-trip
-    if (content || imageUrl) {
-      var w = msgs.querySelector(".lc-w"); if (w) w.remove();
-      var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
-      addMsg(question, "u");
-      var reply = content || "Here's the information you requested. 📋";
-      addMsg(reply, "b", Date.now() / 1000, imageUrl || null);
-      return;
-    }
-
-    // No pre-stored content — send to backend (AI will answer)
     inp.value = question;
     btn.disabled = false;
     send();
