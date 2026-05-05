@@ -496,18 +496,8 @@ async def chat(request: ChatRequest):
         reply, _img_url = handle_library_info_query(
             client, request.message, library_info, history
         )
-        # If there's an image, append its absolute URL to the reply text.
-        # This works with any version of the widget since URLs are rendered as links.
-        if _img_url and ("/api/image/" in _img_url):
-            try:
-                key_start = _img_url.find("/api/image/")
-                clean_path = _img_url[key_start:]
-                chatbot_url = "https://koha-chatbot-one.vercel.app"
-                abs_img_url = chatbot_url + clean_path
-                reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {abs_img_url}"
-            except Exception:
-                pass
-            _img_url = None
+        # Pass image_url as-is — the widget resolves relative /api/image/ paths
+        # using its own CHATBOT_API base, which is always correct regardless of deployment.
         # Store conversation and return with image if present
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
