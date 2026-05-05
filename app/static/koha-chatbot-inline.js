@@ -58,6 +58,11 @@
     "border-bottom-right-radius:4px}" +
     ".lc-m.b{align-self:flex-start;background:#f0f0ec;color:#2d2d2d;" +
     "border-bottom-left-radius:4px}" +
+    ".lc-m img{display:block;max-width:100%;height:auto;border-radius:8px;" +
+    "margin-top:8px;cursor:pointer}" +
+    ".lc-img-wrap{margin-top:8px;width:100%;overflow:hidden}" +
+    ".lc-img-link{font-size:.82rem;color:#0E553F;text-decoration:underline;" +
+    "cursor:pointer;display:block;margin-bottom:4px}" +
     ".lc-fb{display:none}" +
     ".lc-handoff-rate{display:flex;gap:8px;justify-content:center}" +
     ".lc-rate-btn{background:#fff;border:1px solid #ccc;border-radius:18px;" +
@@ -306,23 +311,23 @@
         resolvedImgUrl = CHATBOT_API + imgUrl;
       }
       var imgWrap = document.createElement("div");
-      imgWrap.style.cssText = "margin-top:8px;width:100%;overflow:hidden";
+      imgWrap.className = "lc-img-wrap";
       // Always show a clickable link first (guaranteed visible)
       var imgLink = document.createElement("a");
       imgLink.href = resolvedImgUrl;
       imgLink.target = "_blank";
       imgLink.rel = "noopener";
-      imgLink.textContent = "🖼️ View image";
-      imgLink.style.cssText = "font-size:.82rem;color:#0E553F;text-decoration:underline;cursor:pointer;display:block;margin-bottom:4px";
+      imgLink.textContent = "View image";
+      imgLink.className = "lc-img-link";
       imgLink.addEventListener("click", function(e) { e.stopPropagation(); });
       imgWrap.appendChild(imgLink);
       // Also try to render inline
       var img = document.createElement("img");
       img.alt = "Reply image";
-      img.style.cssText = "display:block;max-width:100%;height:auto;border-radius:8px;cursor:pointer;margin-top:4px";
       img.addEventListener("load", function() {
         // Image loaded — hide the text link since image is visible
         imgLink.style.display = "none";
+        scroll();
       });
       img.addEventListener("error", function() {
         // Image failed — keep the text link, hide broken img
@@ -856,8 +861,8 @@
 
   // Detect handoff activation from bot responses
   var _origAddMsg = addMsg;
-  addMsg = function(t, c, ts) {
-    _origAddMsg(t, c, ts);
+  addMsg = function(t, c, ts, imgUrl) {
+    _origAddMsg(t, c, ts, imgUrl || null);
     if (c === "b" && t && t.indexOf("notified a librarian") !== -1) {
       // Fresh handoff request — reset handler and start polling
       handoffHandler = null;
