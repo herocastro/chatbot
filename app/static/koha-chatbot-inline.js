@@ -1,10 +1,8 @@
 /**
  * Library AI Chatbot — Inline Embed for Koha OPACUserJS
- * @version 2026.05.05-img2
  */
 (function () {
   "use strict";
-  console.log("[LLORA] Widget version: 2026.05.05-img2");
   var CHATBOT_API = "/chatbot";
   // Auto-detect: when served from Vercel, use same origin (empty string = relative).
   // When embedded on an external site (like Koha), use the script's own origin.
