@@ -313,8 +313,9 @@ async def upload_image(request: Request):
         if _staff_store is not None:
             _staff_store.update_settings({img_key: data_url})
 
-        # Return a server-side URL so the FAQ only stores a short key reference
-        return {"url": f"/api/image/{img_key}"}
+        # Return an absolute URL so the widget can load it from any domain
+        base_url = str(request.base_url).rstrip("/")
+        return {"url": f"{base_url}/api/image/{img_key}"}
     except Exception:
         logger.exception("Failed to process image upload")
         return JSONResponse(status_code=500, content={"error": "Failed to process image upload"})

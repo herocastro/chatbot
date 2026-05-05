@@ -324,7 +324,7 @@ async def debug_faq_images():
                 "label": faq.label,
                 "question": faq.question,
                 "image_url_length": len(faq.image_url) if faq.image_url else 0,
-                "image_url_preview": faq.image_url[:80] if faq.image_url else "",
+                "image_url_preview": faq.image_url[:120] if faq.image_url else "",
             })
     return {"faqs": result, "total": len(result)}
 
