@@ -496,6 +496,18 @@ async def chat(request: ChatRequest):
         reply, _img_url = handle_library_info_query(
             client, request.message, library_info, history
         )
+        # If image_url is a data URL, store it in DB and return a /api/image/<key> URL instead.
+        # Sending a 400KB+ base64 string in the JSON response causes rendering issues in widgets.
+        if _img_url and _img_url.startswith("data:image/"):
+            try:
+                from app.staff_routes import staff_store as _ss_img
+                import uuid as _uuid_img
+                if _ss_img is not None:
+                    _img_key = f"faq_image_{_uuid_img.uuid4().hex}"
+                    _ss_img.update_settings({_img_key: _img_url})
+                    _img_url = f"/api/image/{_img_key}"
+            except Exception:
+                logger.exception("Failed to cache data URL as image key")
         # Store conversation and return with image if present
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
