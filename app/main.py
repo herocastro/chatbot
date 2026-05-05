@@ -500,10 +500,9 @@ async def chat(request: ChatRequest):
         # This works with any version of the widget since URLs are rendered as links.
         if _img_url and ("/api/image/" in _img_url):
             try:
-                # Extract just the /api/image/<key> part regardless of any prefix
                 key_start = _img_url.find("/api/image/")
                 clean_path = _img_url[key_start:]
-                chatbot_url = os.environ.get("CHATBOT_PUBLIC_URL", "https://koha-chatbot-one.vercel.app").rstrip("/")
+                chatbot_url = "https://koha-chatbot-one.vercel.app"
                 abs_img_url = chatbot_url + clean_path
                 reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {abs_img_url}"
             except Exception:
