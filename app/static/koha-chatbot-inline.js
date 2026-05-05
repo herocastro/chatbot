@@ -306,10 +306,12 @@
     // Render image below text if provided
     if (imgUrl && c === "b") {
       var img = document.createElement("img");
-      img.src = imgUrl;
+      // Resolve relative image URLs against the chatbot API origin
+      var resolvedImgUrl = (imgUrl.startsWith("/") ? CHATBOT_API + imgUrl : imgUrl);
+      img.src = resolvedImgUrl;
       img.alt = "Reply image";
       img.style.cssText = "display:block;max-width:100%;border-radius:8px;margin-top:8px;cursor:pointer";
-      img.addEventListener("click", function() { window.open(imgUrl, "_blank"); });
+      img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
       img.addEventListener("error", function() { img.style.display = "none"; });
       d.appendChild(img);
     }
