@@ -720,6 +720,23 @@ async def live_chat_page_alt():
     return await live_chat_page()
 
 
+# Serve the inline widget JS with no-cache headers so updates are always picked up.
+_widget_js = os.path.join(os.path.dirname(__file__), "static", "koha-chatbot-inline.js")
+
+@app.get("/static/koha-chatbot-inline.js")
+async def serve_widget_js():
+    """Serve the inline widget JS with no-cache headers."""
+    return FileResponse(
+        _widget_js,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
 # Mount static files for the chat widget.
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
