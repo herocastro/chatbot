@@ -496,8 +496,8 @@ async def chat(request: ChatRequest):
         reply, _img_url = handle_library_info_query(
             client, request.message, library_info, history
         )
-        # If image_url is a data URL, store it in DB and return a /api/image/<key> URL instead.
-        # Sending a 400KB+ base64 string in the JSON response causes rendering issues in widgets.
+        # If there's an image, convert data URL to a /api/image/<key> URL,
+        # then append it as a clickable link in the reply text.
         if _img_url and _img_url.startswith("data:image/"):
             try:
                 from app.staff_routes import staff_store as _ss_img
@@ -508,7 +508,17 @@ async def chat(request: ChatRequest):
                     _img_url = f"/api/image/{_img_key}"
             except Exception:
                 logger.exception("Failed to cache data URL as image key")
-        # Store conversation and return with image if present
+        # Append image as a link in the reply text so it always works in any context
+        if _img_url:
+            base_url = str(request.base_url).rstrip("/")
+            if _img_url.startswith("/"):
+                full_img_url = base_url + _img_url
+            else:
+                full_img_url = _img_url
+            link_text = "\n\n🖼️ [View image](" + full_img_url + ")"
+            reply = (reply + link_text) if reply else link_text.strip()
+            _img_url = None  # don't send as separate field
+        # Store conversation and return
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
         if session_store is not None:
@@ -528,7 +538,7 @@ async def chat(request: ChatRequest):
             reply=reply,
             session_id=request.session_id,
             timestamp=time.time(),
-            image_url=_img_url if _img_url else None,
+            image_url=None,
         )
     elif classification.intent == "greeting":
         reply = GREETING_MESSAGE
