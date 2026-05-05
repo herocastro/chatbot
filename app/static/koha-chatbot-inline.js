@@ -173,16 +173,18 @@
   }
 
   // FAQ buttons — loaded from server
+  // FAQ data map — keyed by question text, populated when FAQs are fetched
+  var _faqDataMap = {};
+
   function buildFaqHtml(faqs) {
     if (!faqs || faqs.length === 0) return "";
+    // Rebuild the lookup map every time FAQs are rendered
+    _faqDataMap = {};
+    faqs.forEach(function(f) {
+      _faqDataMap[f.question] = { content: f.content || "", image_url: f.image_url || "" };
+    });
     return faqs.map(function(f) {
-      var content = (f.content || "").replace(/"/g, "&quot;");
-      var imageUrl = (f.image_url || "").replace(/"/g, "&quot;");
-      return '<button class="lc-faq"' +
-        ' data-q="' + f.question.replace(/"/g, "&quot;") + '"' +
-        ' data-content="' + content + '"' +
-        ' data-image="' + imageUrl + '">' +
-        f.label + '</button>';
+      return '<button class="lc-faq" data-q="' + f.question.replace(/"/g, "&quot;") + '">' + f.label + '</button>';
     }).join("");
   }
   function loadAndRenderFaqs(container) {
@@ -494,8 +496,10 @@
     var question = faq.getAttribute("data-q");
     if (!question) return;
 
-    var content = faq.getAttribute("data-content") || "";
-    var imageUrl = faq.getAttribute("data-image") || "";
+    // Look up pre-stored content and image from the FAQ data map
+    var faqEntry = _faqDataMap[question] || {};
+    var content = faqEntry.content || "";
+    var imageUrl = faqEntry.image_url || "";
 
     // If the FAQ has pre-stored content or image, render immediately without an API round-trip
     if (content || imageUrl) {
