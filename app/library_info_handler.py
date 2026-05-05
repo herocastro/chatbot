@@ -116,6 +116,7 @@ def handle_library_info_query(
         image_url = faq.image_url.strip() if faq.image_url else ""
         if faq.content.strip():
             return faq.content.strip(), image_url
+        # No content — fall through to LLM but keep the image
 
     # Collect image from best match (first one with an image)
     image_url = ""
@@ -131,6 +132,9 @@ def handle_library_info_query(
             data_parts.append(f"[{faq.question}]\n{faq.content.strip()}")
 
     if not data_parts:
+        # No content at all — if we have an image, return a minimal reply with it
+        if image_url:
+            return "Here's the information you requested. 📋", image_url
         return CONTACT_STAFF_MESSAGE, ""
 
     data_str = "\n\n".join(data_parts)
