@@ -301,24 +301,33 @@
         '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$2</a>');
       d.innerHTML = html;
     }
-    // Render image as a clickable link if provided
+    // Render image if provided
     if (imgUrl && c === "b") {
       // Make relative URLs absolute using the chatbot API base
       var resolvedImgUrl = imgUrl;
       if (imgUrl.startsWith("/")) {
         resolvedImgUrl = CHATBOT_API + imgUrl;
       }
-      var linkWrap = document.createElement("div");
-      linkWrap.style.cssText = t && t.trim() ? "margin-top:6px" : "";
-      var imgLink = document.createElement("a");
-      imgLink.href = resolvedImgUrl;
-      imgLink.target = "_blank";
-      imgLink.rel = "noopener";
-      imgLink.textContent = "🖼️ View image";
-      imgLink.style.cssText = "font-size:.85rem;color:#0E553F;text-decoration:underline;cursor:pointer";
-      imgLink.addEventListener("click", function(e) { e.stopPropagation(); });
-      linkWrap.appendChild(imgLink);
-      d.appendChild(linkWrap);
+      var imgWrap = document.createElement("div");
+      imgWrap.style.cssText = t && t.trim() ? "margin-top:8px" : "";
+      var img = document.createElement("img");
+      img.alt = "Reply image";
+      img.style.cssText = "display:block;max-width:100%;border-radius:8px;cursor:pointer";
+      img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
+      img.addEventListener("error", function() {
+        // If inline render fails, fall back to a link
+        img.style.display = "none";
+        var fallback = document.createElement("a");
+        fallback.href = resolvedImgUrl;
+        fallback.target = "_blank";
+        fallback.rel = "noopener";
+        fallback.textContent = "🖼️ View image";
+        fallback.style.cssText = "font-size:.85rem;color:#0E553F;text-decoration:underline;cursor:pointer";
+        imgWrap.appendChild(fallback);
+      });
+      img.src = resolvedImgUrl;
+      imgWrap.appendChild(img);
+      d.appendChild(imgWrap);
     }
     d.querySelectorAll("a.lc-link").forEach(function(a) {
       a.addEventListener("click", function(e) {

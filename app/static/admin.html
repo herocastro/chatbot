@@ -1723,29 +1723,48 @@
         var file = this.files && this.files[0];
         if (!file) return;
         var statusEl = document.getElementById("li-d-upload-status");
-        statusEl.textContent = "Uploading…";
+        statusEl.textContent = "Processing…";
         statusEl.style.color = "#7f8c8d";
-        var formData = new FormData();
-        formData.append("file", file);
-        try {
-          var resp = await fetch("/admin/api/upload-image", {
-            method: "POST",
-            headers: { "X-Admin-Key": apiKey },
-            body: formData,
+
+        // Compress image client-side to keep it under ~80KB before storing as data URL
+        function compressImage(file, maxWidth, maxHeight, quality) {
+          return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              var img = new Image();
+              img.onload = function() {
+                var canvas = document.createElement("canvas");
+                var w = img.width, h = img.height;
+                // Scale down if needed
+                if (w > maxWidth || h > maxHeight) {
+                  var ratio = Math.min(maxWidth / w, maxHeight / h);
+                  w = Math.round(w * ratio);
+                  h = Math.round(h * ratio);
+                }
+                canvas.width = w;
+                canvas.height = h;
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL("image/jpeg", quality));
+              };
+              img.onerror = reject;
+              img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
           });
-          var result = await resp.json();
-          if (resp.ok && result.url) {
-            document.getElementById("li-d-image").value = result.url;
-            updateImagePreview(result.url);
-            statusEl.textContent = "✓ Uploaded";
-            statusEl.style.color = "#27ae60";
-            setTimeout(function() { statusEl.textContent = ""; }, 3000);
-          } else {
-            statusEl.textContent = "✗ " + (result.error || "Upload failed");
-            statusEl.style.color = "#e74c3c";
-          }
+        }
+
+        try {
+          // Compress to max 800x800, JPEG quality 0.7 — keeps most images under 80KB
+          var dataUrl = await compressImage(file, 800, 800, 0.7);
+          document.getElementById("li-d-image").value = dataUrl;
+          updateImagePreview(dataUrl);
+          statusEl.textContent = "✓ Ready (" + Math.round(dataUrl.length / 1024) + " KB)";
+          statusEl.style.color = "#27ae60";
+          setTimeout(function() { statusEl.textContent = ""; }, 3000);
         } catch (e) {
-          statusEl.textContent = "✗ Network error";
+          statusEl.textContent = "✗ Failed to process image";
           statusEl.style.color = "#e74c3c";
         }
         this.value = ""; // reset so same file can be re-selected
