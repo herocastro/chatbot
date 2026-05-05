@@ -130,9 +130,9 @@ def handle_library_info_query(
 
         if clean_content:
             return clean_content, exact_image_url
-        # No text content but has image — return empty reply so widget shows image only
+        # No text content but has image — return a minimal reply so the bubble is never blank
         if exact_image_url:
-            return "", exact_image_url
+            return "Here's the information you requested. 📋", exact_image_url
 
     # Collect image from best match (first one with an image), preserving exact match image
     image_url = exact_image_url
@@ -156,10 +156,10 @@ def handle_library_info_query(
             data_parts.append(f"[{faq.question}]\n{clean_content}")
 
     if not data_parts:
-        # No content at all — if we have an image, return empty reply so widget shows image only
+        # No content at all — if we have an image, return a minimal reply
         if image_url:
             logger.info("FAQ image-only reply, image_url length=%d", len(image_url))
-            return "", image_url
+            return "Here's the information you requested. 📋", image_url
         return CONTACT_STAFF_MESSAGE, ""
 
     data_str = "\n\n".join(data_parts)
