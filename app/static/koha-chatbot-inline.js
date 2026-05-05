@@ -1,10 +1,10 @@
 /**
  * Library AI Chatbot — Inline Embed for Koha OPACUserJS
- * @version 2026.05.05-img
+ * @version 2026.05.05-img2
  */
 (function () {
   "use strict";
-  console.log("[LLORA] Widget version: 2026.05.05-img");
+  console.log("[LLORA] Widget version: 2026.05.05-img2");
   var CHATBOT_API = "/chatbot";
   // Auto-detect: when served from Vercel, use same origin (empty string = relative).
   // When embedded on an external site (like Koha), use the script's own origin.
@@ -193,12 +193,11 @@
         console.warn("[LLORA] FAQ fetch failed:", err);
         // Fallback only on network/server error
         container.innerHTML = buildFaqHtml([
-          { label: "&#128336; Library hours", question: "What are the library hours?" },
+          { label: "&#128336; Library Hours", question: "What are the library hours?" },
           { label: "&#128172; LIBVAS", question: "What is LIBVAS?" },
-          { label: "&#128196; LIRAS", question: "What is LIRAS?" },
+          { label: "&#128196; LIBRS", question: "What is LIBRS?" },
           { label: "&#128187; LIBRAS", question: "What is LIBRAS?" },
-          { label: "&#128424; LibPrintS", question: "How does LibPrintS work?" },
-          { label: "&#128214; Borrowing privileges", question: "What are the borrowing privileges?" }
+          { label: "&#128424; LibPrintS", question: "How does LibPrintS work?" }
         ]);
       });
   }
