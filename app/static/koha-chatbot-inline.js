@@ -308,22 +308,29 @@
         resolvedImgUrl = CHATBOT_API + imgUrl;
       }
       var imgWrap = document.createElement("div");
-      imgWrap.style.cssText = t && t.trim() ? "margin-top:8px" : "";
+      imgWrap.style.cssText = "margin-top:8px;width:100%;overflow:hidden";
+      // Always show a clickable link first (guaranteed visible)
+      var imgLink = document.createElement("a");
+      imgLink.href = resolvedImgUrl;
+      imgLink.target = "_blank";
+      imgLink.rel = "noopener";
+      imgLink.textContent = "🖼️ View image";
+      imgLink.style.cssText = "font-size:.82rem;color:#0E553F;text-decoration:underline;cursor:pointer;display:block;margin-bottom:4px";
+      imgLink.addEventListener("click", function(e) { e.stopPropagation(); });
+      imgWrap.appendChild(imgLink);
+      // Also try to render inline
       var img = document.createElement("img");
       img.alt = "Reply image";
-      img.style.cssText = "display:block;max-width:100%;border-radius:8px;cursor:pointer";
-      img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
-      img.addEventListener("error", function() {
-        // If inline render fails, fall back to a link
-        img.style.display = "none";
-        var fallback = document.createElement("a");
-        fallback.href = resolvedImgUrl;
-        fallback.target = "_blank";
-        fallback.rel = "noopener";
-        fallback.textContent = "🖼️ View image";
-        fallback.style.cssText = "font-size:.85rem;color:#0E553F;text-decoration:underline;cursor:pointer";
-        imgWrap.appendChild(fallback);
+      img.style.cssText = "display:block;max-width:100%;height:auto;border-radius:8px;cursor:pointer;margin-top:4px";
+      img.addEventListener("load", function() {
+        // Image loaded — hide the text link since image is visible
+        imgLink.style.display = "none";
       });
+      img.addEventListener("error", function() {
+        // Image failed — keep the text link, hide broken img
+        img.style.display = "none";
+      });
+      img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
       img.src = resolvedImgUrl;
       imgWrap.appendChild(img);
       d.appendChild(imgWrap);
