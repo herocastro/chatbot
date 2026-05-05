@@ -314,6 +314,21 @@ async def get_image(img_key: str):
         return JSONResponse(status_code=500, content={"error": "Failed to serve image"})
 
 
+@app.get("/debug/faq-images")
+async def debug_faq_images():
+    """Debug: show what image_url values are stored in the current FAQ list."""
+    result = []
+    if library_info:
+        for faq in library_info.faqs:
+            result.append({
+                "label": faq.label,
+                "question": faq.question,
+                "image_url_length": len(faq.image_url) if faq.image_url else 0,
+                "image_url_preview": faq.image_url[:80] if faq.image_url else "",
+            })
+    return {"faqs": result, "total": len(result)}
+
+
 @app.get("/")
 async def root():
     """Root endpoint — confirms the API is running."""
