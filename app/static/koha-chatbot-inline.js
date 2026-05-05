@@ -1,15 +1,10 @@
 /**
  * Library AI Chatbot — Inline Embed for Koha OPACUserJS
- *
- * Paste this entire file into OPACUserJS, or load it via:
- *   (function(){ var s=document.createElement("script");
- *     s.src="/chatbot/static/koha-chatbot-inline.js";
- *     document.body.appendChild(s); })();
- *
- * CONFIGURATION: Set CHATBOT_API below to your chatbot backend URL.
+ * @version 2026.05.05-img
  */
 (function () {
   "use strict";
+  console.log("[LLORA] Widget version: 2026.05.05-img");
   var CHATBOT_API = "/chatbot";
   // Auto-detect: when served from Vercel, use same origin (empty string = relative).
   // When embedded on an external site (like Koha), use the script's own origin.
