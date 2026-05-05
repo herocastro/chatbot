@@ -498,17 +498,17 @@ async def chat(request: ChatRequest):
         )
         # If there's an image, append its absolute URL to the reply text.
         # This works with any version of the widget since URLs are rendered as links.
-        if _img_url:
-            base = str(request.base_url).rstrip("/")
-            if _img_url.startswith("/"):
-                abs_img_url = base + _img_url
-            elif _img_url.startswith("data:image/"):
-                abs_img_url = None  # skip data URLs — too large for reply text
-            else:
-                abs_img_url = _img_url
-            if abs_img_url:
+        if _img_url and _img_url.startswith("/"):
+            try:
+                chatbot_url = os.environ.get("CHATBOT_PUBLIC_URL", "").rstrip("/")
+                if not chatbot_url:
+                    # Fallback: build from request
+                    chatbot_url = str(request.base_url).rstrip("/")
+                abs_img_url = chatbot_url + _img_url
                 reply = (reply + "\n\n" if reply else "") + f"🖼️ View image: {abs_img_url}"
-            _img_url = None  # don't send separately, it's in the reply text now
+            except Exception:
+                pass  # skip image link on error
+            _img_url = None
         # Store conversation and return with image if present
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
