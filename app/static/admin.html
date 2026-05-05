@@ -1635,7 +1635,7 @@
         var data = await apiFetch("/admin/api/library-info");
         if (!data) return;
         _faqData = (data.faqs || []).map(function(f) {
-          return { label: f.label || "", question: f.question || "", content: f.content || "" };
+          return { label: f.label || "", question: f.question || "", content: f.content || "", image_url: f.image_url || "" };
         });
         renderFaqCards();
       }
