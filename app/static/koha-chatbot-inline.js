@@ -312,22 +312,21 @@
       }
       var imgWrap = document.createElement("div");
       imgWrap.style.cssText = "margin-top:8px";
+      // Always show a clickable link
+      var link = document.createElement("a");
+      link.href = resolvedImgUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "🖼️ View image";
+      link.style.cssText = "font-size:.82rem;color:#0E553F;text-decoration:underline;cursor:pointer;display:block;margin-bottom:6px";
+      imgWrap.appendChild(link);
+      // Also try to show inline image
       var img = document.createElement("img");
       img.src = resolvedImgUrl;
       img.alt = "Reply image";
       img.style.cssText = "display:block;max-width:100%;border-radius:8px;cursor:pointer";
       img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
-      img.addEventListener("error", function() {
-        // Image failed — show a clickable link instead
-        img.style.display = "none";
-        var link = document.createElement("a");
-        link.href = resolvedImgUrl;
-        link.target = "_blank";
-        link.rel = "noopener";
-        link.textContent = "🖼️ View image";
-        link.style.cssText = "font-size:.82rem;color:#0E553F;text-decoration:underline;cursor:pointer";
-        imgWrap.appendChild(link);
-      });
+      img.addEventListener("error", function() { img.style.display = "none"; });
       imgWrap.appendChild(img);
       d.appendChild(imgWrap);
     }
