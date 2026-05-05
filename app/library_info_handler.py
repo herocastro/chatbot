@@ -110,14 +110,27 @@ def handle_library_info_query(
         return CONTACT_STAFF_MESSAGE, ""
 
     # Exact match — return content and image directly, bypassing LLM
+    import re as _re
+    _url_pattern = _re.compile(r'https?://\S+|data:image/[^\s]+')
     msg_lower = message.strip().lower()
     exact_image_url = ""
     if len(matches) == 1 and matches[0].question.strip().lower() == msg_lower:
         faq = matches[0]
         exact_image_url = faq.image_url.strip() if faq.image_url else ""
-        if faq.content.strip():
-            return faq.content.strip(), exact_image_url
-        # No content but has image — return immediately with placeholder
+
+        # If image_url is empty, check if a URL was embedded in the content field
+        # (happens when admin pasted a URL into the reply box instead of the image field)
+        if not exact_image_url:
+            embedded = _url_pattern.search(faq.content)
+            if embedded:
+                exact_image_url = embedded.group(0)
+
+        # Strip all URLs from content before returning — image is sent separately
+        clean_content = _url_pattern.sub("", faq.content).strip()
+
+        if clean_content:
+            return clean_content, exact_image_url
+        # No text content but has image — return placeholder
         if exact_image_url:
             return "Here's the information you requested. 📋", exact_image_url
 
@@ -128,11 +141,14 @@ def handle_library_info_query(
             if faq.image_url and faq.image_url.strip():
                 image_url = faq.image_url.strip()
                 break
+        if not image_url:
+            for faq in matches:
+                embedded = _url_pattern.search(faq.content)
+                if embedded:
+                    image_url = embedded.group(0)
+                    break
 
-    # Build data string from matched FAQ content — strip image_url from content
-    # so the LLM never sees or repeats image URLs in its reply
-    import re as _re
-    _url_pattern = _re.compile(r'https?://\S+|data:image/\S+')
+    # Build data string from matched FAQ content — strip URLs so LLM never repeats them
     data_parts = []
     for faq in matches:
         clean_content = _url_pattern.sub("", faq.content).strip()
