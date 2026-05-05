@@ -176,7 +176,13 @@
   function buildFaqHtml(faqs) {
     if (!faqs || faqs.length === 0) return "";
     return faqs.map(function(f) {
-      return '<button class="lc-faq" data-q="' + f.question.replace(/"/g, "&quot;") + '">' + f.label + '</button>';
+      var content = (f.content || "").replace(/"/g, "&quot;");
+      var imageUrl = (f.image_url || "").replace(/"/g, "&quot;");
+      return '<button class="lc-faq"' +
+        ' data-q="' + f.question.replace(/"/g, "&quot;") + '"' +
+        ' data-content="' + content + '"' +
+        ' data-image="' + imageUrl + '">' +
+        f.label + '</button>';
     }).join("");
   }
   function loadAndRenderFaqs(container) {
@@ -487,6 +493,21 @@
     e.stopPropagation();
     var question = faq.getAttribute("data-q");
     if (!question) return;
+
+    var content = faq.getAttribute("data-content") || "";
+    var imageUrl = faq.getAttribute("data-image") || "";
+
+    // If the FAQ has pre-stored content or image, render immediately without an API round-trip
+    if (content || imageUrl) {
+      var w = msgs.querySelector(".lc-w"); if (w) w.remove();
+      var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
+      addMsg(question, "u");
+      var reply = content || "Here's the information you requested. 📋";
+      addMsg(reply, "b", Date.now() / 1000, imageUrl || null);
+      return;
+    }
+
+    // No pre-stored content — send to backend (AI will answer)
     inp.value = question;
     btn.disabled = false;
     send();
