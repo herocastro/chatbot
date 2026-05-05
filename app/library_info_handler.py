@@ -111,19 +111,20 @@ def handle_library_info_query(
 
     # Exact match — return content and image directly
     msg_lower = message.strip().lower()
+    exact_image_url = ""
     if len(matches) == 1 and matches[0].question.strip().lower() == msg_lower:
         faq = matches[0]
-        image_url = faq.image_url.strip() if faq.image_url else ""
+        exact_image_url = faq.image_url.strip() if faq.image_url else ""
         if faq.content.strip():
-            return faq.content.strip(), image_url
-        # No content — fall through to LLM but keep the image
+            return faq.content.strip(), exact_image_url
 
-    # Collect image from best match (first one with an image)
-    image_url = ""
-    for faq in matches:
-        if faq.image_url and faq.image_url.strip():
-            image_url = faq.image_url.strip()
-            break
+    # Collect image from best match (first one with an image), preserving exact match image
+    image_url = exact_image_url
+    if not image_url:
+        for faq in matches:
+            if faq.image_url and faq.image_url.strip():
+                image_url = faq.image_url.strip()
+                break
 
     # Build data string from matched FAQ content
     data_parts = []
@@ -134,6 +135,7 @@ def handle_library_info_query(
     if not data_parts:
         # No content at all — if we have an image, return a minimal reply with it
         if image_url:
+            logger.info("FAQ image-only reply, image_url length=%d", len(image_url))
             return "Here's the information you requested. 📋", image_url
         return CONTACT_STAFF_MESSAGE, ""
 
