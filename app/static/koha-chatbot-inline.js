@@ -301,24 +301,24 @@
         '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$2</a>');
       d.innerHTML = html;
     }
-    // Render image if provided
+    // Render image as a clickable link if provided
     if (imgUrl && c === "b") {
       // Make relative URLs absolute using the chatbot API base
       var resolvedImgUrl = imgUrl;
       if (imgUrl.startsWith("/")) {
         resolvedImgUrl = CHATBOT_API + imgUrl;
       }
-      var imgWrap = document.createElement("div");
-      imgWrap.style.cssText = t && t.trim() ? "margin-top:8px" : "";
-      // Also try to show inline image
-      var img = document.createElement("img");
-      img.src = resolvedImgUrl;
-      img.alt = "Reply image";
-      img.style.cssText = "display:block;max-width:100%;border-radius:8px;cursor:pointer";
-      img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
-      img.addEventListener("error", function() { img.style.display = "none"; });
-      imgWrap.appendChild(img);
-      d.appendChild(imgWrap);
+      var linkWrap = document.createElement("div");
+      linkWrap.style.cssText = t && t.trim() ? "margin-top:6px" : "";
+      var imgLink = document.createElement("a");
+      imgLink.href = resolvedImgUrl;
+      imgLink.target = "_blank";
+      imgLink.rel = "noopener";
+      imgLink.textContent = "🖼️ View image";
+      imgLink.style.cssText = "font-size:.85rem;color:#0E553F;text-decoration:underline;cursor:pointer";
+      imgLink.addEventListener("click", function(e) { e.stopPropagation(); });
+      linkWrap.appendChild(imgLink);
+      d.appendChild(linkWrap);
     }
     d.querySelectorAll("a.lc-link").forEach(function(a) {
       a.addEventListener("click", function(e) {
