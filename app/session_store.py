@@ -1486,7 +1486,7 @@ class SessionStore:
             conn.close()
 
     def get_staff_ratings_summary(self, days: int = 30) -> list[dict]:
-        """Return per-staff rating stats: total, positive, negative, avg."""
+        """Return per-staff rating stats: total, avg_score, and satisfaction_rate (score/4 * 100)."""
         cutoff = time.time() - (days * 86400)
         conn = self._get_connection()
         try:
@@ -1494,8 +1494,9 @@ class SessionStore:
                 """
                 SELECT staff_username,
                        COUNT(*) AS total,
-                       SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) AS positive,
-                       SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) AS negative
+                       ROUND(AVG(rating), 2) AS avg_score,
+                       SUM(CASE WHEN rating >= 3 THEN 1 ELSE 0 END) AS satisfied,
+                       SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS unsatisfied
                 FROM staff_ratings
                 WHERE created_at >= ?
                 GROUP BY staff_username
@@ -1507,9 +1508,13 @@ class SessionStore:
                 {
                     "staff_username": r["staff_username"],
                     "total": r["total"],
-                    "positive": r["positive"],
-                    "negative": r["negative"],
-                    "satisfaction_rate": round((r["positive"] / r["total"]) * 100, 1) if r["total"] > 0 else 0.0,
+                    "avg_score": r["avg_score"] or 0.0,
+                    "satisfied": r["satisfied"],
+                    "unsatisfied": r["unsatisfied"],
+                    # Keep positive/negative keys for backward compat with admin dashboard
+                    "positive": r["satisfied"],
+                    "negative": r["unsatisfied"],
+                    "satisfaction_rate": round((r["avg_score"] / 4.0) * 100, 1) if r["avg_score"] else 0.0,
                 }
                 for r in rows
             ]

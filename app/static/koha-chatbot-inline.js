@@ -834,22 +834,25 @@
     ratingShown = true;
     // Show "chat ended" message first
     _origAddMsg("The librarian has ended the chat. 👋", "b");
-    // Then show rating
+    // Then show rating survey
     var rateDiv = document.createElement("div");
     rateDiv.className = "lc-m b";
-    rateDiv.style.cssText = "text-align:center;max-width:90%;padding:14px 18px";
+    rateDiv.style.cssText = "text-align:center;max-width:95%;padding:14px 18px;white-space:normal";
     rateDiv.innerHTML =
-      '<div style="margin-bottom:8px;font-size:0.92em;color:#333">How was your experience with the librarian?</div>' +
-      '<div class="lc-handoff-rate">' +
-      '<button class="lc-rate-btn" data-rating="1" aria-label="Good experience">👍 Good</button>' +
-      '<button class="lc-rate-btn" data-rating="-1" aria-label="Bad experience">👎 Could be better</button>' +
+      '<div style="margin-bottom:10px;font-size:0.92em;color:#333;font-weight:600">How satisfied were you with the librarian\'s assistance?</div>' +
+      '<div class="lc-handoff-rate" style="flex-direction:column;gap:6px;align-items:stretch">' +
+      '<button class="lc-rate-btn" data-rating="4" aria-label="Very Satisfied" style="text-align:left">😄 4 — Very Satisfied</button>' +
+      '<button class="lc-rate-btn" data-rating="3" aria-label="Satisfied" style="text-align:left">� 3 — Satisfied</button>' +
+      '<button class="lc-rate-btn" data-rating="2" aria-label="Moderately Satisfied" style="text-align:left">� 2 — Moderately Satisfied</button>' +
+      '<button class="lc-rate-btn" data-rating="1" aria-label="Not Satisfied" style="text-align:left">😞 1 — Not Satisfied</button>' +
       '</div>';
     msgs.appendChild(rateDiv);
     scroll();
-    rateDiv.querySelectorAll(".lc-rate-btn").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        var rating = parseInt(btn.getAttribute("data-rating"));
-        rateDiv.innerHTML = '<div style="color:#555;font-size:0.88rem">Thanks for your feedback! ' + (rating === 1 ? '😊' : '🙏') + '</div>';
+    rateDiv.querySelectorAll(".lc-rate-btn").forEach(function(rBtn) {
+      rBtn.addEventListener("click", function() {
+        var rating = parseInt(rBtn.getAttribute("data-rating"));
+        var labels = { 4: "Very Satisfied 😄", 3: "Satisfied 🙂", 2: "Moderately Satisfied 😐", 1: "Not Satisfied 😞" };
+        rateDiv.innerHTML = '<div style="color:#555;font-size:0.88rem">Thanks for your feedback! You rated: <strong>' + (labels[rating] || rating) + '</strong></div>';
         fetch(CHATBOT_API + "/api/rate-handoff", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

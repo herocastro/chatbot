@@ -628,16 +628,16 @@ async def submit_feedback(request: FeedbackRequest):
 
 class HandoffRatingRequest(BaseModel):
     session_id: str
-    rating: int  # 1 = positive, -1 = negative
+    rating: int  # 1 = Not Satisfied, 2 = Moderately Satisfied, 3 = Satisfied, 4 = Very Satisfied
 
 
 @app.post("/api/rate-handoff")
 async def rate_handoff(request: HandoffRatingRequest):
-    """Accept patron rating for the staff member who handled their live chat."""
+    """Accept patron rating (1–4 scale) for the staff member who handled their live chat."""
     if not request.session_id or not request.session_id.strip():
         return JSONResponse(status_code=400, content={"error": "Session identifier is required"})
-    if request.rating not in (1, -1):
-        return JSONResponse(status_code=400, content={"error": "Rating must be 1 or -1"})
+    if request.rating not in (1, 2, 3, 4):
+        return JSONResponse(status_code=400, content={"error": "Rating must be 1, 2, 3, or 4"})
     if session_store is None:
         return JSONResponse(status_code=500, content={"error": "Store not available"})
     # Look up who handled this session — check live chat first, fall back to old claim

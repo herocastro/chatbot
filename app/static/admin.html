@@ -2072,6 +2072,20 @@
       function getKey() { return sessionStorage.getItem("admin_api_key") || ""; }
       function fmtDate(ts) { return ts ? new Date(ts * 1000).toLocaleString() : "—"; }
       function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+      function ratingLabel(r) {
+        if (r === 4) return "😄 4 — Very Satisfied";
+        if (r === 3) return "🙂 3 — Satisfied";
+        if (r === 2) return "😐 2 — Moderately Satisfied";
+        if (r === 1) return "😞 1 — Not Satisfied";
+        return "No rating";
+      }
+      function ratingBadge(r) {
+        if (r === 4) return '<span class="rating-badge rating-positive">😄 4</span>';
+        if (r === 3) return '<span class="rating-badge rating-positive" style="background:#d5f5e3;color:#1a7a3a">🙂 3</span>';
+        if (r === 2) return '<span class="rating-badge" style="background:#fef9e7;color:#b7770d">😐 2</span>';
+        if (r === 1) return '<span class="rating-badge rating-negative">😞 1</span>';
+        return '<span class="rating-badge rating-none">No rating</span>';
+      }
 
       async function loadArchive() {
         loadStaffRatings();
@@ -2102,10 +2116,7 @@
         }
         sessions.forEach(function (s) {
           var tr = document.createElement("tr");
-          var ratingHtml;
-          if (s.rating === 1) ratingHtml = '<span class="rating-badge rating-positive">👍 Good</span>';
-          else if (s.rating === -1) ratingHtml = '<span class="rating-badge rating-negative">👎 Poor</span>';
-          else ratingHtml = '<span class="rating-badge rating-none">No rating</span>';
+          var ratingHtml = ratingBadge(s.rating);
           var handoffLabel = s.handoff_num > 1 ? " (#" + s.handoff_num + ")" : "";
           tr.innerHTML =
             "<td>" + esc(s.session_id.substring(0, 12)) + "…" + handoffLabel + "</td>" +
@@ -2145,7 +2156,7 @@
         archiveTable.parentElement.querySelector(".archive-cleanup").classList.add("hidden");
         archiveTable.classList.add("hidden");
         archiveDetail.classList.remove("hidden");
-        var ratingText = rating === 1 ? "👍 Good" : rating === -1 ? "👎 Poor" : "No rating";
+        var ratingText = ratingLabel(rating);
         var handoffLabel = handoffNum > 1 ? " (Handoff #" + handoffNum + ")" : "";
         archiveDetailMeta.innerHTML =
           "<dt>Session ID</dt><dd>" + esc(sid) + handoffLabel + "</dd>" +
@@ -2228,13 +2239,14 @@
           data.forEach(function (s) {
             var card = document.createElement("div");
             card.className = "staff-rating-card";
-            var satColor = s.satisfaction_rate >= 70 ? "#27ae60" : s.satisfaction_rate >= 40 ? "#f39c12" : "#e74c3c";
+            var avgScore = s.avg_score || 0;
+            var satColor = avgScore >= 3 ? "#27ae60" : avgScore >= 2 ? "#f39c12" : "#e74c3c";
             card.innerHTML =
               '<div class="src-name">' + esc(s.staff_username) + '</div>' +
-              '<div class="src-rate" style="color:' + satColor + '">' + s.satisfaction_rate + '%</div>' +
+              '<div class="src-rate" style="color:' + satColor + '">Avg: ' + (avgScore ? avgScore.toFixed(1) : "—") + ' / 4</div>' +
               '<div class="src-stats">' +
-              '<span>👍 ' + s.positive + '</span>' +
-              '<span>👎 ' + s.negative + '</span>' +
+              '<span>😄 ' + (s.satisfied || 0) + ' satisfied</span>' +
+              '<span>😞 ' + (s.unsatisfied || 0) + ' unsatisfied</span>' +
               '<span>Total: ' + s.total + '</span>' +
               '</div>';
             container.appendChild(card);
@@ -2316,10 +2328,7 @@
         }
         sessions.forEach(function(s) {
           var tr = document.createElement("tr");
-          var ratingHtml;
-          if (s.rating === 1) ratingHtml = '<span class="rating-badge rating-positive">👍</span>';
-          else if (s.rating === -1) ratingHtml = '<span class="rating-badge rating-negative">👎</span>';
-          else ratingHtml = '<span class="rating-badge rating-none">—</span>';
+          var ratingHtml = ratingBadge(s.rating);
           tr.innerHTML =
             "<td>" + esc(s.display_name || s.session_id.substring(0, 12)) + "</td>" +
             "<td>" + esc(s.handled_by) + "</td>" +
