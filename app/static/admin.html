@@ -427,40 +427,6 @@
             <div id="staff-ratings-list" class="staff-ratings-cards"></div>
           </section>
 
-          <h4 style="font-size:0.96em;color:#2c3e50;margin:20px 0 10px 0">Chat Sessions</h4>
-          <table class="session-table" id="archive-table" aria-label="Archived live chat sessions">
-            <thead>
-              <tr>
-                <th scope="col">Session ID</th>
-                <th scope="col">Handled By</th>
-                <th scope="col">Date</th>
-                <th scope="col">Messages</th>
-                <th scope="col">Rating</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="archive-tbody"></tbody>
-          </table>
-          <nav class="pagination" aria-label="Archive pagination">
-            <button id="archive-prev-btn" type="button" disabled>← Prev</button>
-            <span id="archive-page-info">Page 1</span>
-            <button id="archive-next-btn" type="button" disabled>Next →</button>
-          </nav>
-
-          <div class="archive-cleanup" style="margin-top:20px;padding-top:16px;border-top:1px solid #ecf0f1;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button id="archive-delete-all-btn" type="button" class="btn-danger" style="font-size:0.84em;padding:6px 14px">Delete All Records</button>
-            <span id="archive-delete-status" class="li-status"></span>
-          </div>
-        </div>
-
-        <div id="archive-detail" class="hidden" style="margin-top:20px">
-          <div class="detail-view">
-            <div class="detail-header">
-              <dl class="detail-meta" id="archive-detail-meta"></dl>
-              <button class="back-btn" id="archive-back-btn" type="button">← Back to archive</button>
-            </div>
-            <div class="messages" id="archive-detail-messages" aria-label="Archived message transcript"></div>
-          </div>
         </div>
 
         <!-- Live Chat History -->
@@ -2060,17 +2026,8 @@
     // Chat Archive Tab
     // =====================================================================
     (function () {
-      var archivePage = 1;
-      var archivePageSize = 20;
-      var archiveTbody = document.getElementById("archive-tbody");
       var archiveDaysSelect = document.getElementById("archive-days");
       var archiveStaffFilter = document.getElementById("archive-staff-filter");
-      var archiveRefreshBtn = document.getElementById("archive-refresh-btn");
-      var archiveDetail = document.getElementById("archive-detail");
-      var archiveDetailMeta = document.getElementById("archive-detail-meta");
-      var archiveDetailMsgs = document.getElementById("archive-detail-messages");
-      var archiveBackBtn = document.getElementById("archive-back-btn");
-      var archiveTable = document.getElementById("archive-table");
 
       function getKey() { return sessionStorage.getItem("admin_api_key") || ""; }
       function fmtDate(ts) { return ts ? new Date(ts * 1000).toLocaleString() : "—"; }
@@ -2090,143 +2047,9 @@
         return '<span class="rating-badge rating-none">No rating</span>';
       }
 
-      async function loadArchive() {
-        loadStaffRatings();
-        var params = new URLSearchParams();
-        params.set("page", archivePage);
-        params.set("page_size", archivePageSize);
-        params.set("days", archiveDaysSelect.value);
-        var staff = archiveStaffFilter.value;
-        if (staff) params.set("staff", staff);
-        try {
-          var resp = await fetch("/admin/api/handoff-archive?" + params.toString(), {
-            headers: { "X-Admin-Key": getKey() }
-          });
-          var data = await resp.json();
-          renderArchive(data.sessions || []);
-          var totalPages = Math.max(1, Math.ceil((data.total || 0) / archivePageSize));
-          document.getElementById("archive-prev-btn").disabled = archivePage <= 1;
-          document.getElementById("archive-next-btn").disabled = archivePage >= totalPages;
-          document.getElementById("archive-page-info").textContent = "Page " + archivePage + " of " + totalPages;
-        } catch (e) { console.error("Failed to load archive", e); }
-      }
-
-      function renderArchive(sessions) {
-        archiveTbody.innerHTML = "";
-        if (!sessions.length) {
-          archiveTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#7f8c8d">No archived live chat sessions found.</td></tr>';
-          return;
-        }
-        sessions.forEach(function (s) {
-          var tr = document.createElement("tr");
-          var ratingHtml = ratingBadge(s.rating);
-          var handoffLabel = s.handoff_num > 1 ? " (#" + s.handoff_num + ")" : "";
-          tr.innerHTML =
-            "<td>" + esc(s.session_id.substring(0, 12)) + "…" + handoffLabel + "</td>" +
-            "<td>" + esc(s.handled_by || "—") + "</td>" +
-            "<td>" + fmtDate(s.rated_at) + "</td>" +
-            "<td>" + (s.message_count || "—") + "</td>" +
-            "<td>" + ratingHtml + "</td>" +
-            '<td class="staff-actions-cell">' +
-            '<button class="back-btn" style="padding:3px 10px;font-size:0.8em">View</button>' +
-            '<button class="btn-delete" style="padding:3px 10px;font-size:0.8em">Delete</button>' +
-            '</td>';
-          tr.querySelector(".back-btn").addEventListener("click", function () {
-            openArchiveDetail(s.session_id, s.handled_by, s.rating, s.handoff_num);
-          });
-          tr.querySelector(".btn-delete").addEventListener("click", function () {
-            deleteArchiveRecord(s.rating_id, tr);
-          });
-          archiveTbody.appendChild(tr);
-        });
-      }
-
-      async function deleteArchiveRecord(ratingId, rowEl) {
-        if (!confirm("Delete this handoff record?")) return;
-        try {
-          var resp = await fetch("/admin/api/handoff-archive/" + ratingId, {
-            method: "DELETE", headers: { "X-Admin-Key": getKey() }
-          });
-          if (resp.ok) {
-            rowEl.style.opacity = "0.3";
-            setTimeout(function () { loadArchive(); }, 300);
-          }
-        } catch (e) { console.error("Failed to delete record", e); }
-      }
-
-      async function openArchiveDetail(sid, handledBy, rating, handoffNum) {
-        archiveTable.parentElement.querySelector(".pagination").classList.add("hidden");
-        archiveTable.parentElement.querySelector(".archive-cleanup").classList.add("hidden");
-        archiveTable.classList.add("hidden");
-        archiveDetail.classList.remove("hidden");
-        var ratingText = ratingLabel(rating);
-        var handoffLabel = handoffNum > 1 ? " (Handoff #" + handoffNum + ")" : "";
-        archiveDetailMeta.innerHTML =
-          "<dt>Session ID</dt><dd>" + esc(sid) + handoffLabel + "</dd>" +
-          "<dt>Handled By</dt><dd>" + esc(handledBy || "—") + "</dd>" +
-          "<dt>Rating</dt><dd>" + ratingText + "</dd>";
-        archiveDetailMsgs.innerHTML = '<p style="color:#7f8c8d">Loading…</p>';
-        try {
-          var resp = await fetch("/admin/api/sessions/" + encodeURIComponent(sid) + "/handoff-messages?handoff_num=" + (handoffNum || 0), {
-            headers: { "X-Admin-Key": getKey() }
-          });
-          var data = await resp.json();
-          archiveDetailMsgs.innerHTML = "";
-          if (!data.messages || !data.messages.length) {
-            archiveDetailMsgs.innerHTML = '<p style="color:#7f8c8d">No messages.</p>';
-            return;
-          }
-          data.messages.forEach(function (m) {
-            var div = document.createElement("article");
-            var cls = "message ";
-            if (m.role === "user") cls += "message-user";
-            else if (m.role === "librarian") cls += "message-librarian";
-            else cls += "message-assistant";
-            div.className = cls;
-            var label = m.role === "user" ? "👤 Patron" : m.role === "librarian" ? "👩‍💼 " + esc(handledBy || "Librarian") : "🤖 Hero";
-            div.innerHTML = '<div class="msg-meta">' + label + " — " + fmtDate(m.timestamp) + "</div><div>" + esc(m.content) + "</div>";
-            archiveDetailMsgs.appendChild(div);
-          });
-        } catch (e) {
-          archiveDetailMsgs.innerHTML = '<p style="color:#e74c3c">Failed to load messages.</p>';
-        }
-      }
-
-      archiveBackBtn.addEventListener("click", function () {
-        archiveDetail.classList.add("hidden");
-        archiveTable.classList.remove("hidden");
-        archiveTable.parentElement.querySelector(".pagination").classList.remove("hidden");
-        archiveTable.parentElement.querySelector(".archive-cleanup").classList.remove("hidden");
-      });
-
-      archiveRefreshBtn.addEventListener("click", function () { archivePage = 1; loadArchive(); });
-      archiveDaysSelect.addEventListener("change", function () { archivePage = 1; loadArchive(); });
-      archiveStaffFilter.addEventListener("change", function () { archivePage = 1; loadArchive(); });
-      document.getElementById("archive-prev-btn").addEventListener("click", function () { if (archivePage > 1) { archivePage--; loadArchive(); } });
-      document.getElementById("archive-next-btn").addEventListener("click", function () { archivePage++; loadArchive(); });
-
-      document.getElementById("archive-delete-all-btn").addEventListener("click", async function () {
-        if (!confirm("Delete ALL handoff records (staff assignments and ratings)? The chat sessions themselves will remain. This cannot be undone.")) return;
-        var statusEl = document.getElementById("archive-delete-status");
-        try {
-          var resp = await fetch("/admin/api/handoff-archive", {
-            method: "DELETE", headers: { "X-Admin-Key": getKey() }
-          });
-          var data = await resp.json();
-          if (resp.ok) {
-            statusEl.textContent = "✓ Deleted " + (data.deleted_ratings || 0) + " ratings, cleared " + (data.cleared_sessions || 0) + " sessions";
-            statusEl.style.color = "#27ae60";
-            loadArchive();
-          } else {
-            statusEl.textContent = "✗ " + (data.error || "Failed");
-            statusEl.style.color = "#e74c3c";
-          }
-        } catch (e) {
-          statusEl.textContent = "✗ Network error";
-          statusEl.style.color = "#e74c3c";
-        }
-        setTimeout(function () { statusEl.textContent = ""; }, 5000);
-      });
+      archiveDaysSelect.addEventListener("change", function () { loadStaffRatings(); loadLiveChatHistory(); });
+      archiveStaffFilter.addEventListener("change", function () { loadLiveChatHistory(); });
+      document.getElementById("archive-refresh-btn").addEventListener("click", function () { loadStaffRatings(); loadLiveChatHistory(); });
 
       async function loadStaffRatings() {
         var days = archiveDaysSelect.value;
@@ -2281,7 +2104,7 @@
         btn.addEventListener("click", function () {
           if (btn.dataset.tab === "archive-tab") {
             populateStaffFilter();
-            loadArchive();
+            loadStaffRatings();
             loadLiveChatHistory();
           }
         });
