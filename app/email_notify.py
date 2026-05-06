@@ -125,7 +125,7 @@ def send_handoff_email(
 ) -> bool:
     """Send a handoff notification email."""
     chat_link = _build_chat_link(admin_url, session_id)
-    subject = "📚 A patron wants to talk to a librarian"
+    subject = "📚 A patron wants to ask a librarian"
 
     html_body = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:20px">
@@ -230,7 +230,7 @@ def send_ntfy_notification(
         httpx.post(
             f"https://ntfy.sh/{ntfy_topic}",
             headers={
-                "Title": "📚 Patron wants to talk to a librarian",
+                "Title": "📚 Patron wants to ask a librarian",
                 "Click": chat_link,
                 "Tags": "books,speech_balloon",
             },

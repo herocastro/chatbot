@@ -68,6 +68,7 @@ _LIBRARIAN_KEYWORDS = {
 _LIBRARIAN_PHRASES = {
     "talk to a librarian", "talk to librarian", "speak to a librarian",
     "speak to librarian", "talk to a human", "talk to a person",
+    "ask a librarian", "ask the librarian",
     "i want a librarian", "need a librarian", "live chat",
     "real person please", "connect me to a librarian", "human please",
 }

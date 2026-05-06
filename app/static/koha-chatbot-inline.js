@@ -509,7 +509,7 @@
   var libBtn = document.getElementById("lc-librarian");
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
-    inp.value = "Talk to a librarian";
+    inp.value = "Ask a librarian";
     btn.disabled = false;
     send();
   });
