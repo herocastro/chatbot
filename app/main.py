@@ -565,12 +565,16 @@ async def close_session(request: ChatRequest):
         return JSONResponse(status_code=400, content={"error": "Session identifier is required"})
     if session_store is not None:
         try:
-            # End any active live chat
             live_chat = session_store.get_active_live_chat(request.session_id)
             if live_chat:
-                session_store.end_live_chat(live_chat["id"])
-            # Deactivate any active handoff
-            if session_store.is_handoff_active(request.session_id):
+                # Only auto-end the live chat if it hasn't been claimed by a librarian yet.
+                # If a librarian is actively handling it, only they can end it.
+                if not live_chat.get("staff_username"):
+                    session_store.end_live_chat(live_chat["id"])
+                # If claimed, leave the live chat running — librarian will end it explicitly.
+            # Deactivate handoff flag only if no active live chat remains
+            remaining = session_store.get_active_live_chat(request.session_id)
+            if not remaining and session_store.is_handoff_active(request.session_id):
                 session_store.deactivate_handoff(request.session_id)
             session_store.close_session(request.session_id)
         except Exception:
