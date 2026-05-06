@@ -98,8 +98,12 @@ def _quick_classify(message: str) -> str | None:
         # Otherwise treat as conversational (needs LLM with history to make sense of it)
         return "conversational"
 
-    # Greetings (exact or near-exact match)
+    # Greetings (exact or near-exact match, or starts with a greeting word)
     if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
+        return "greeting"
+    # Multi-word messages that start with a greeting word (e.g. "hello man", "hey there")
+    first_word = lower.split()[0].rstrip("!?.") if lower.split() else ""
+    if first_word in _GREETING_PATTERNS:
         return "greeting"
 
     # Talk to a librarian (check phrases first, then keywords)

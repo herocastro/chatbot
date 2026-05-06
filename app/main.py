@@ -343,6 +343,26 @@ async def root():
     return {"status": "ok", "app": "Library AI Chatbot"}
 
 
+def _llm_reply(
+    client: GroqClient | None,
+    message: str,
+    history: list[dict],
+    max_history: int = 6,
+) -> str | None:
+    """Call the LLM with conversation history. Returns None if unavailable or on error."""
+    if not client or not is_llm_available():
+        return None
+    try:
+        messages_for_llm = list(history[-max_history:]) if history else []
+        messages_for_llm.append({"role": "user", "content": message})
+        reply = client.chat(messages_for_llm)
+        if isinstance(reply, str) and reply and "trouble" not in reply.lower():
+            return reply
+    except Exception:
+        pass
+    return None
+
+
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """Process a patron chat message and return a response.
@@ -511,57 +531,13 @@ async def chat(request: ChatRequest):
         )
     elif classification.intent == "greeting":
         # Use LLM for a natural, conversational greeting that remembers context
-        if client and is_llm_available():
-            try:
-                messages_for_llm = []
-                if history:
-                    messages_for_llm.extend(history[-6:])
-                messages_for_llm.append({"role": "user", "content": request.message})
-                llm_reply = client.chat(messages_for_llm)
-                if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
-                    reply = llm_reply
-                else:
-                    reply = GREETING_MESSAGE
-            except Exception:
-                reply = GREETING_MESSAGE
-        else:
-            reply = GREETING_MESSAGE
+        reply = _llm_reply(client, request.message, history, max_history=6) or GREETING_MESSAGE
     elif classification.intent == "conversational":
-        # Follow-up or clarifying message — use LLM with full history so it can
-        # continue the conversation naturally while staying on library topics.
-        if client and is_llm_available():
-            try:
-                messages_for_llm = []
-                if history:
-                    messages_for_llm.extend(history[-8:])
-                messages_for_llm.append({"role": "user", "content": request.message})
-                llm_reply = client.chat(messages_for_llm)
-                if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
-                    reply = llm_reply
-                else:
-                    reply = CLARIFYING_MESSAGE
-            except Exception:
-                reply = CLARIFYING_MESSAGE
-        else:
-            reply = CLARIFYING_MESSAGE
+        # Follow-up or clarifying message — use LLM with full history
+        reply = _llm_reply(client, request.message, history, max_history=8) or CLARIFYING_MESSAGE
     else:
-        # "unclear" intent — let the LLM respond, but the system prompt strictly
-        # limits it to library/school topics. Off-topic questions get redirected.
-        if client and is_llm_available():
-            try:
-                messages_for_llm = []
-                if history:
-                    messages_for_llm.extend(history[-6:])
-                messages_for_llm.append({"role": "user", "content": request.message})
-                llm_reply = client.chat(messages_for_llm)
-                if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
-                    reply = llm_reply
-                else:
-                    reply = OFF_TOPIC_MESSAGE
-            except Exception:
-                reply = OFF_TOPIC_MESSAGE
-        else:
-            reply = OFF_TOPIC_MESSAGE
+        # "unclear" / off-topic — LLM will redirect per system prompt, or use static fallback
+        reply = _llm_reply(client, request.message, history, max_history=6) or OFF_TOPIC_MESSAGE
 
     # --- Store conversation turn ---
     session_mgr.add_message(request.session_id, "user", request.message)
