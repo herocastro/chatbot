@@ -858,8 +858,23 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: sid, rating: rating })
         }).catch(function() {});
+        // Return patron to bot chat after rating
+        returnToBot();
       });
     });
+    // Re-enable chat after a short delay even if patron skips rating
+    setTimeout(returnToBot, 8000);
+  }
+
+  function returnToBot() {
+    // Only run once
+    if (inp.disabled === false) return;
+    _origAddMsg("Back to help! 👋 What else can I do for you?", "b");
+    inp.disabled = false;
+    inp.placeholder = "Ask me about the library...";
+    btn.disabled = !inp.value.trim();
+    inp.focus();
+    scroll();
   }
 
   // Detect handoff activation from bot responses
