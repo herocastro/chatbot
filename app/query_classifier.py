@@ -59,6 +59,20 @@ _GREETING_PATTERNS = {
     "see you", "see ya", "later", "alright", "cool", "great", "awesome",
 }
 
+# Greeting word stems — any word starting with these is treated as a greeting
+_GREETING_STEMS = ("hi", "hey", "hell", "hola", "howdy", "sup", "yo", "bye", "good")
+
+
+def _is_greeting_word(word: str) -> bool:
+    """Return True if a word looks like a greeting (exact match or common stem)."""
+    w = word.lower().strip("!?.,")
+    if w in _GREETING_PATTERNS:
+        return True
+    for stem in _GREETING_STEMS:
+        if w.startswith(stem) and len(w) <= len(stem) + 4:
+            return True
+    return False
+
 _CATALOG_KEYWORDS = {
     "book", "books", "find", "search", "look", "read", "reading",
     "recommend", "suggest", "title", "author", "isbn", "catalog",
@@ -95,15 +109,17 @@ def _quick_classify(message: str) -> str | None:
         # Check if it's a known greeting/ack first
         if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
             return "greeting"
+        if any(_is_greeting_word(w) for w in words):
+            return "greeting"
         # Otherwise treat as conversational (needs LLM with history to make sense of it)
         return "conversational"
 
     # Greetings (exact or near-exact match, or starts with a greeting word)
     if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
         return "greeting"
-    # Multi-word messages that start with a greeting word (e.g. "hello man", "hey there")
-    first_word = lower.split()[0].rstrip("!?.") if lower.split() else ""
-    if first_word in _GREETING_PATTERNS:
+    # Multi-word messages that start with a greeting word (e.g. "hello man", "heya there")
+    first_word = lower.split()[0] if lower.split() else ""
+    if _is_greeting_word(first_word):
         return "greeting"
 
     # Talk to a librarian (check phrases first, then keywords)

@@ -349,17 +349,17 @@ def _llm_reply(
     history: list[dict],
     max_history: int = 6,
 ) -> str | None:
-    """Call the LLM with conversation history. Returns None if unavailable or on error."""
+    """Call the LLM with conversation history. Returns None if LLM is not configured."""
     if not client or not is_llm_available():
         return None
     try:
         messages_for_llm = list(history[-max_history:]) if history else []
         messages_for_llm.append({"role": "user", "content": message})
         reply = client.chat(messages_for_llm)
-        if isinstance(reply, str) and reply and "trouble" not in reply.lower():
+        if isinstance(reply, str) and reply.strip():
             return reply
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("LLM call failed: %s", exc)
     return None
 
 
