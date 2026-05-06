@@ -403,6 +403,7 @@
         <div id="lch-detail" class="hidden" style="margin-top:20px">
           <div class="detail-view">
             <div class="detail-header">
+              <h4 style="margin:0 0 12px 0;font-size:1em;color:#2c3e50">Live Chat Transcript</h4>
               <dl class="detail-meta" id="lch-detail-meta"></dl>
               <button class="back-btn" id="lch-back-btn" type="button">← Back to history</button>
             </div>
@@ -418,7 +419,7 @@
             <h3 style="font-size:1.05em;color:#2c3e50;margin:0">📧 Staff Contacts</h3>
             <button id="sc-add-btn" type="button" class="btn-primary">+ Add Contact</button>
           </div>
-          <p class="quality-desc">Manage librarian contacts. Active contacts are automatically notified by email when a patron requests to ask a librarian.</p>
+          <p class="quality-desc">Manage librarian contacts. Active contacts are automatically notified by email when a patron requests to talk to a librarian.</p>
 
           <div id="sc-add-form" class="hidden" style="background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin:16px 0">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2338,19 +2339,21 @@
             "<td>" + ratingHtml + "</td>" +
             '<td><button class="back-btn" style="padding:3px 10px;font-size:0.8em">View</button></td>';
           tr.querySelector("button").addEventListener("click", function() {
-            openLiveChatDetail(s.live_chat_id, s.display_name || s.session_id.substring(0, 12), s.handled_by);
+            openLiveChatDetail(s.live_chat_id, s.display_name || s.session_id.substring(0, 12), s.handled_by, s.rating, s.ended_at);
           });
           lchTbody.appendChild(tr);
         });
       }
 
-      async function openLiveChatDetail(liveChatId, name, handledBy) {
+      async function openLiveChatDetail(liveChatId, name, handledBy, rating, endedAt) {
         lchTable.classList.add("hidden");
         lchTable.parentElement.querySelector(".pagination").classList.add("hidden");
         lchDetail.classList.remove("hidden");
         document.getElementById("lch-detail-meta").innerHTML =
           "<dt>Patron</dt><dd>" + esc(name) + "</dd>" +
-          "<dt>Handled By</dt><dd>" + esc(handledBy || "—") + "</dd>";
+          "<dt>Handled By</dt><dd>" + esc(handledBy || "—") + "</dd>" +
+          "<dt>Ended</dt><dd>" + fmtDate(endedAt) + "</dd>" +
+          "<dt>Patron Rating</dt><dd>" + ratingLabel(rating) + "</dd>";
         var msgContainer = document.getElementById("lch-detail-messages");
         msgContainer.innerHTML = '<p style="color:#7f8c8d">Loading…</p>';
         try {
@@ -2360,18 +2363,19 @@
           var data = await resp.json();
           msgContainer.innerHTML = "";
           if (!data.messages || !data.messages.length) {
-            msgContainer.innerHTML = '<p style="color:#7f8c8d">No messages.</p>';
+            msgContainer.innerHTML = '<p style="color:#7f8c8d">No messages recorded for this live chat session.</p>';
             return;
           }
           data.messages.forEach(function(m) {
             var div = document.createElement("article");
-            var cls = "message ";
-            if (m.role === "user") cls += "message-user";
-            else if (m.role === "librarian") cls += "message-librarian";
-            else cls += "message-assistant";
-            div.className = cls;
-            var label = m.role === "user" ? "👤 Patron" : m.role === "librarian" ? "👩‍💼 Librarian" : "🤖 Hero";
-            div.innerHTML = '<div class="msg-meta">' + label + " — " + fmtDate(m.timestamp) + "</div><div>" + esc(m.content) + "</div>";
+            var isLibrarian = m.role === "librarian";
+            div.className = "message " + (isLibrarian ? "message-librarian" : "message-user");
+            var label = isLibrarian
+              ? "👩‍💼 " + esc(handledBy || "Librarian")
+              : "👤 " + esc(name || "Patron");
+            div.innerHTML =
+              '<div class="msg-meta">' + label + " — " + fmtDate(m.timestamp) + "</div>" +
+              "<div>" + esc(m.content) + "</div>";
             msgContainer.appendChild(div);
           });
         } catch(e) {
