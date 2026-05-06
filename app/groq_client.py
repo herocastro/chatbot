@@ -27,7 +27,7 @@ SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
 
 # Default model and generation parameters.
 DEFAULT_MODEL = "meta-llama/llama-3.2-3b-instruct:free"
-DEFAULT_MAX_TOKENS = 512
+DEFAULT_MAX_TOKENS = 300
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_OLLAMA_URL = "https://openrouter.ai/api/v1"
 

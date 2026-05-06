@@ -66,6 +66,14 @@ GREETING_MESSAGE = (
     "I can assist with finding books, library hours, borrowing info, printing services, and more."
 )
 
+# Varied greeting responses to feel more natural (picked randomly)
+_GREETING_RESPONSES = [
+    "Hello! 👋 How can I help you today? I can find books, answer questions about library hours, policies, and more.",
+    "Hi there! 😊 What can I help you with? I'm here for book searches, library info, and anything else library-related.",
+    "Hey! 👋 I'm LLORA, your library assistant. Looking for a book, or do you have a question about the library?",
+    "Hello! 📚 Ready to help — need a book recommendation, library hours, or something else?",
+]
+
 OFF_TOPIC_MESSAGE = (
     "I'm only able to help with library and school-related topics! 😊 "
     "I can assist you with:\n"
@@ -348,6 +356,7 @@ def _llm_reply(
     message: str,
     history: list[dict],
     max_history: int = 6,
+    max_tokens: int | None = None,
 ) -> str | None:
     """Call the LLM with conversation history. Returns None if LLM is not configured."""
     if not client or not is_llm_available():
@@ -355,7 +364,13 @@ def _llm_reply(
     try:
         messages_for_llm = list(history[-max_history:]) if history else []
         messages_for_llm.append({"role": "user", "content": message})
+        # Temporarily override max_tokens if specified
+        if max_tokens is not None:
+            original = client.max_tokens
+            client.max_tokens = max_tokens
         reply = client.chat(messages_for_llm)
+        if max_tokens is not None:
+            client.max_tokens = original
         if isinstance(reply, str) and reply.strip():
             return reply
     except Exception as exc:
@@ -530,14 +545,15 @@ async def chat(request: ChatRequest):
             image_url=_img_url if _img_url else None,
         )
     elif classification.intent == "greeting":
-        # Use LLM for a natural, conversational greeting that remembers context
-        reply = _llm_reply(client, request.message, history, max_history=6) or GREETING_MESSAGE
+        # Use a fast static response — no LLM needed for greetings
+        import random
+        reply = random.choice(_GREETING_RESPONSES)
     elif classification.intent == "conversational":
-        # Follow-up or clarifying message — use LLM with full history
-        reply = _llm_reply(client, request.message, history, max_history=8) or CLARIFYING_MESSAGE
+        # Follow-up or clarifying message — use LLM with full history, short response
+        reply = _llm_reply(client, request.message, history, max_history=8, max_tokens=150) or CLARIFYING_MESSAGE
     else:
-        # "unclear" / off-topic — LLM will redirect per system prompt, or use static fallback
-        reply = _llm_reply(client, request.message, history, max_history=6) or OFF_TOPIC_MESSAGE
+        # "unclear" / off-topic — LLM will redirect per system prompt, short response
+        reply = _llm_reply(client, request.message, history, max_history=6, max_tokens=120) or OFF_TOPIC_MESSAGE
 
     # --- Store conversation turn ---
     session_mgr.add_message(request.session_id, "user", request.message)
