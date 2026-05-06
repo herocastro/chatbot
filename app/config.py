@@ -11,16 +11,13 @@ load_dotenv()
 
 REQUIRED_ENV_VARS = [
     "KOHA_API_URL",
-    "LIBRARY_INFO_PATH",
 ]
-
 
 @dataclass
 class Settings:
     """Application settings loaded from environment variables."""
 
     koha_api_url: str
-    library_info_path: str
     ollama_url: str = "http://localhost:11434/v1"
     ollama_model: str = "llama3.2:3b"
     admin_api_key: str | None = None
@@ -33,11 +30,7 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    """Load and validate settings from environment variables.
-
-    Raises SystemExit with a descriptive error naming the missing variable
-    if any required environment variable is absent.
-    """
+    """Load and validate settings from environment variables."""
     missing = [var for var in REQUIRED_ENV_VARS if not os.environ.get(var)]
     if missing:
         for var in missing:
@@ -45,7 +38,6 @@ def load_settings() -> Settings:
 
     return Settings(
         koha_api_url=os.environ.get("KOHA_API_URL", ""),
-        library_info_path=os.environ.get("LIBRARY_INFO_PATH", "data/library_info.json"),
         ollama_url=os.environ.get("OLLAMA_URL", "http://localhost:11434/v1"),
         ollama_model=os.environ.get("OLLAMA_MODEL", "llama3.2:3b"),
         admin_api_key=os.environ.get("ADMIN_API_KEY"),

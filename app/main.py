@@ -13,11 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.admin_routes import router as admin_router, login_router as admin_login_router, set_session_store, set_library_info_path, _public_typing_router
+from app.admin_routes import router as admin_router, login_router as admin_login_router, set_session_store, _public_typing_router
 from app.catalog_handler import handle_catalog_query
 from app.config import Settings, load_settings
 from app.groq_client import GroqClient
-from app.library_info_handler import handle_library_info_query, load_library_info
+from app.library_info_handler import handle_library_info_query
 from app.models import ChatRequest, ChatResponse, ErrorResponse, LibraryInfo
 from app.models import FeedbackRequest
 from app.ai_settings import AiSettings, load_ai_settings
@@ -106,11 +106,7 @@ async def startup() -> None:
         groq_client = None
 
     session_manager = SessionManager()
-
-    if settings:
-        library_info = load_library_info(settings.library_info_path)
-    else:
-        library_info = LibraryInfo()
+    library_info = LibraryInfo()  # start empty; DB load below fills it
 
     # Initialise persistent session store for admin monitoring.
     db_path = os.environ.get("SESSION_DB_PATH", "/tmp/sessions.db")
@@ -121,9 +117,6 @@ async def startup() -> None:
         logger.warning("Failed to initialise session store at %s", db_path)
         session_store = None
 
-    if settings:
-        set_library_info_path(settings.library_info_path)
-
     # Initialise staff account and settings store.
     try:
         staff_store_instance = StaffStore(db_path=db_path)
@@ -131,7 +124,7 @@ async def startup() -> None:
     except Exception:
         logger.warning("Failed to initialise settings store")
 
-    # Try loading library info from database (overrides file if present)
+    # Load library info from database (single source of truth)
     try:
         from app.staff_routes import staff_store as _ss
         if _ss is not None:
@@ -139,16 +132,17 @@ async def startup() -> None:
             if db_val:
                 import json as _json
                 library_info = LibraryInfo(**_json.loads(db_val))
-                logger.info("Loaded library info from database")
+                logger.info("Loaded library info from database (%d FAQs)", len(library_info.faqs))
+            else:
+                logger.info("No library info in database yet — configure via admin panel")
     except Exception:
-        logger.info("No library info in database, using file")
+        logger.warning("Failed to load library info from database")
 
     # Load AI settings from database
     try:
         from app.staff_routes import staff_store as _ss2
         if _ss2 is not None:
             ai_settings = load_ai_settings(_ss2)
-            # Apply to groq_client system prompt
             import app.groq_client as _gc
             _gc.SYSTEM_PROMPT = ai_settings.build_system_prompt()
             logger.info("Loaded AI settings: name=%s", ai_settings.name)

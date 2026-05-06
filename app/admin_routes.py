@@ -23,7 +23,6 @@ router = APIRouter(prefix="/admin/api", dependencies=[Depends(verify_admin_key)]
 login_router = APIRouter(prefix="/admin/api")
 
 session_store: SessionStore | None = None
-library_info_path: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -39,12 +38,6 @@ def set_session_store(store: SessionStore) -> None:
     """Set the module-level SessionStore instance (called at app startup)."""
     global session_store
     session_store = store
-
-
-def set_library_info_path(path: str) -> None:
-    """Set the path to library_info.json (called at app startup)."""
-    global library_info_path
-    library_info_path = path
 
 
 @login_router.post("/login", response_model=LoginResponse)
@@ -442,30 +435,20 @@ async def get_library_info():
                 return _migrate_to_faqs(data)
             except Exception:
                 pass
-    # Fall back to file
-    if not library_info_path:
-        return JSONResponse(status_code=500, content={"error": "Library info path not configured"})
-    try:
-        with open(library_info_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return _migrate_to_faqs(data)
-    except Exception:
-        logger.exception("Failed to read library info")
-        return JSONResponse(status_code=500, content={"error": "Failed to read library info"})
+    # No data in DB yet — return empty FAQs list
+    return {"faqs": []}
 
 
 @router.put("/library-info")
 async def update_library_info(payload: dict):
     """Update library info and reload it in the running app."""
-    # Validate structure — only faqs is required now
     if "faqs" not in payload or not isinstance(payload["faqs"], list):
         return JSONResponse(status_code=400, content={"error": "'faqs' must be a list."})
     for i, faq in enumerate(payload["faqs"]):
         if not isinstance(faq, dict) or not faq.get("label") or not faq.get("question"):
             return JSONResponse(status_code=400, content={"error": f"FAQ item {i} must have 'label' and 'question'."})
-    # Strip legacy fields from payload to keep storage clean
     clean_payload = {"faqs": payload["faqs"]}
-    # Save to database (works on Vercel and locally)
+    # Save to database — single source of truth
     from app.staff_routes import staff_store as _staff_store
     if _staff_store is not None:
         try:
@@ -473,15 +456,6 @@ async def update_library_info(payload: dict):
         except Exception:
             logger.exception("Failed to save library info to database")
             return JSONResponse(status_code=500, content={"error": "Failed to save library info"})
-
-    # Also try to write to file (works locally, fails silently on Vercel)
-    if library_info_path:
-        try:
-            with open(library_info_path, "w", encoding="utf-8") as f:
-                json.dump(clean_payload, f, indent=2, ensure_ascii=False)
-                f.write("\n")
-        except Exception:
-            logger.info("Could not write library_info.json to disk (read-only filesystem)")
 
     # Reload in the running app
     try:
