@@ -523,10 +523,18 @@ class SessionStore:
         page_size = max(1, page_size)
         conn = self._get_connection()
         try:
-            # Auto-deactivate handoffs for expired sessions
+            # Auto-deactivate handoffs for expired sessions — but ONLY if they have
+            # no active live chat. Active live chats keep the handoff alive regardless
+            # of parent session last_activity.
             cutoff = time.time() - SESSION_TIMEOUT
             conn.execute(
-                "UPDATE sessions SET handoff_active = 0 WHERE handoff_active = 1 AND last_activity < ?",
+                """UPDATE sessions SET handoff_active = 0
+                   WHERE handoff_active = 1
+                   AND last_activity < ?
+                   AND session_id NOT IN (
+                       SELECT parent_session_id FROM live_chat_sessions
+                       WHERE status IN ('waiting', 'active')
+                   )""",
                 (cutoff,),
             )
             conn.commit()
@@ -796,11 +804,15 @@ class SessionStore:
         """Return live chat sessions waiting for or active with a librarian."""
         page = max(1, page)
         page_size = max(1, page_size)
-        cutoff = time.time() - SESSION_TIMEOUT
+        # Use a longer timeout for live chat — patron may be idle while waiting for librarian.
+        # Only auto-end sessions that have been waiting with NO activity for 30 minutes.
+        LIVE_CHAT_TIMEOUT = 30 * 60  # 30 minutes
+        cutoff = time.time() - LIVE_CHAT_TIMEOUT
         conn = self._get_connection()
         try:
-            # Auto-end live chats that are still waiting and whose parent session expired
-            # Don't auto-end active chats (staff is handling them)
+            # Auto-end WAITING (unclaimed) live chats whose parent session has been
+            # inactive for 30+ minutes. Never auto-end ACTIVE chats — only explicit
+            # end calls should close those.
             conn.execute(
                 """UPDATE live_chat_sessions SET status = 'ended', ended_at = ?
                    WHERE status = 'waiting'

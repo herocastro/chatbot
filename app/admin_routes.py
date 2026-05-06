@@ -830,18 +830,29 @@ async def end_live_chat(live_chat_id: str):
 
 @router.get("/live-chat/{live_chat_id}/messages")
 async def get_live_chat_messages(live_chat_id: str):
-    """Return all messages and status for a live chat session."""
+    """Return all messages and status for a live chat session.
+
+    Also refreshes the parent session's last_activity so an active live chat
+    never gets auto-expired while the librarian is still connected.
+    """
     store = _get_store()
     try:
         messages = store.get_all_live_chat_messages(live_chat_id)
-        # Get status
         conn = store._get_connection()
         try:
             row = conn.execute(
-                "SELECT status FROM live_chat_sessions WHERE id = ?",
+                "SELECT status, parent_session_id FROM live_chat_sessions WHERE id = ?",
                 (live_chat_id,),
             ).fetchone()
             status = row["status"] if row else "ended"
+            # Keep the parent session alive while the live chat is active
+            if row and row["status"] in ("waiting", "active") and row["parent_session_id"]:
+                import time as _time
+                conn.execute(
+                    "UPDATE sessions SET last_activity = ? WHERE session_id = ?",
+                    (_time.time(), row["parent_session_id"]),
+                )
+                conn.commit()
         finally:
             conn.close()
         return {"messages": messages, "status": status}
