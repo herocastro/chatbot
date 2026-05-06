@@ -113,7 +113,11 @@ async def startup() -> None:
             model=settings.ollama_model,
         )
     else:
-        groq_client = None
+        # Settings failed to load — still initialize the LLM client from env vars directly
+        groq_client = GroqClient(
+            base_url=os.environ.get("OLLAMA_URL", "https://openrouter.ai/api/v1"),
+            model=os.environ.get("OLLAMA_MODEL", "meta-llama/llama-3.2-3b-instruct:free"),
+        )
 
     session_manager = SessionManager()
     library_info = LibraryInfo()  # start empty; DB load below fills it

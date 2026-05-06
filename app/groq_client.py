@@ -26,10 +26,10 @@ DEFAULT_SYSTEM_PROMPT = (
 SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
 
 # Default model and generation parameters.
-DEFAULT_MODEL = "qwen2.5:1.5b"
-DEFAULT_MAX_TOKENS = 256
+DEFAULT_MODEL = "meta-llama/llama-3.2-3b-instruct:free"
+DEFAULT_MAX_TOKENS = 512
 DEFAULT_TEMPERATURE = 0.7
-DEFAULT_OLLAMA_URL = "http://localhost:11434/v1"
+DEFAULT_OLLAMA_URL = "https://openrouter.ai/api/v1"
 
 # Ordered list of fallback models to try when the primary is rate-limited.
 # All are free on OpenRouter. First available one wins.
@@ -53,14 +53,14 @@ FALLBACK_RATE_LIMIT = (
 
 
 def is_llm_available() -> bool:
-    """Return True if an LLM backend is configured (Ollama or OpenRouter)."""
+    """Return True if an LLM backend is configured and reachable."""
     import os
-    # OpenRouter cloud key
+    # OpenRouter cloud key — primary check
     if os.environ.get("OPENROUTER_API_KEY"):
         return True
-    # Local Ollama — always available when OLLAMA_URL points to localhost
-    ollama_url = os.environ.get("OLLAMA_URL", DEFAULT_OLLAMA_URL)
-    if ollama_url:
+    # Local Ollama — only if explicitly pointed to localhost (not the OpenRouter default)
+    ollama_url = os.environ.get("OLLAMA_URL", "")
+    if ollama_url and "localhost" in ollama_url:
         return True
     return False
 
