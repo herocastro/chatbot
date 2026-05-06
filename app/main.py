@@ -428,11 +428,12 @@ async def chat(request: ChatRequest):
                 from app.email_notify import _use_service_account
                 _has_email = (_cfg.smtp_email and _cfg.smtp_password) or _use_service_account()
                 if _has_email:
-                    # 1. Email all active staff contacts (personalized by name)
+                    # Email all active staff contacts (personalized by name)
                     try:
                         from app.staff_routes import staff_store as _ss
                         if _ss:
                             contacts = _ss.get_active_contacts()
+                            logger.info("Notifying %d staff contacts for session %s", len(contacts), _sid)
                             for c in contacts:
                                 try:
                                     send_staff_notify_email(
@@ -442,27 +443,7 @@ async def chat(request: ChatRequest):
                                 except Exception:
                                     logger.exception("Failed to notify contact %s", c["email"])
                     except Exception:
-                        pass
-                    # 2. Also email notification-emails list (legacy/fallback)
-                    emails = []
-                    try:
-                        from app.staff_routes import staff_store as _ss
-                        if _ss:
-                            raw = _ss.get_setting("notification_emails")
-                            if raw:
-                                emails = _json.loads(raw)
-                    except Exception:
-                        pass
-                    if not emails and _cfg.librarian_email:
-                        emails = [_cfg.librarian_email]
-                    for email in emails:
-                        try:
-                            send_handoff_email(
-                                _cfg.smtp_email, _cfg.smtp_password, email.strip(),
-                                _sid, _cfg.chatbot_public_url,
-                            )
-                        except Exception:
-                            logger.exception("Failed to send notification to %s", email)
+                        logger.exception("Failed to fetch staff contacts")
             asyncio.create_task(_send_notification())
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
