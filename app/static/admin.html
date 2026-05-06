@@ -2576,7 +2576,6 @@
               handoffChatHeader.innerHTML = '<span>⚠️ Patron has left the chat</span>';
               handoffInputBar.style.display = "none";
               activeHandoffSid = null;
-              isReadOnly = false;
             }
           }
           // Update badge
@@ -2629,79 +2628,31 @@
       }
 
       var activeParentSid = null; // track parent session_id for display
-      var isReadOnly = false; // true when viewing a session claimed by someone else
 
       async function openHandoffChat(liveChatId, parentSid, claimedBy) {
         var me = getMyUsername();
-        // If claimed by someone else (e.g. a staff member on live-chat.html),
-        // open in read-only mode — no claim, no End Chat button
-        if (claimedBy && claimedBy !== me) {
-          isReadOnly = true;
-          activeHandoffSid = liveChatId;
-          activeParentSid = parentSid;
-          lastHandoffTs = 0;
-          handoffChatHeader.innerHTML =
-            '<span>Session: ' + parentSid.substring(0, 20) + '… — <span style="color:#e67e22">👁️ Read-only · Handled by ' + escapeHtml(claimedBy) + '</span></span>';
-          handoffInputBar.style.display = "none";
-          handoffMessages.innerHTML = "";
-          await pollHandoffMessages();
-          startHandoffPoll();
-          return;
-        }
 
-        // Ask before claiming
-        if (!confirm("Join this live chat session? You will be connected with the patron.")) return;
-
-        isReadOnly = false;
-        // Claim the live chat session
+        // Admin dashboard is always read-only — never claim sessions.
+        // Only the staff live-chat page (opened from the email link) should claim.
         activeHandoffSid = liveChatId;
         activeParentSid = parentSid;
         lastHandoffTs = 0;
-        try {
-          var claimResp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/claim", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Admin-Key": getKey() },
-            body: JSON.stringify({ username: me })
-          });
-          if (claimResp.status === 409) {
-            var claimData = await claimResp.json();
-            var other = claimData.claimed_by || "someone";
-            // Someone claimed it between our check and claim — switch to read-only
-            isReadOnly = true;
-            handoffChatHeader.innerHTML =
-              '<span>Session: ' + parentSid.substring(0, 20) + '… — <span style="color:#e67e22">👁️ Read-only · Handled by ' + escapeHtml(other) + '</span></span>';
-            handoffInputBar.style.display = "none";
-          } else {
-            handoffChatHeader.innerHTML =
-              '<span>Session: ' + parentSid.substring(0, 20) + '… — <span style="color:#27ae60">You are handling this</span></span>' +
-              ' <button id="handoff-release-btn" type="button" style="font-size:0.78em;padding:3px 10px;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer;margin-left:8px">Release</button>';
-            handoffInputBar.style.display = "flex";
-            var releaseBtn = document.getElementById("handoff-release-btn");
-            if (releaseBtn) {
-              releaseBtn.addEventListener("click", async function () {
-                await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/release", {
-                  method: "POST", headers: { "X-Admin-Key": getKey() }
-                });
-                handoffChatHeader.innerHTML = "<span>Released. Select a session from the queue.</span>";
-                handoffInputBar.style.display = "none";
-                activeHandoffSid = null;
-                activeParentSid = null;
-                isReadOnly = false;
-                stopHandoffPoll();
-                await loadHandoffQueue();
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Failed to claim session", e);
-          handoffChatHeader.innerHTML = '<span>Session: ' + parentSid.substring(0, 20) + '…</span>';
-          handoffInputBar.style.display = "flex";
+
+        if (claimedBy) {
+          handoffChatHeader.innerHTML =
+            '<span>Session: ' + escapeHtml(parentSid.substring(0, 20)) + '… — <span style="color:#27ae60">Handled by ' + escapeHtml(claimedBy) + '</span></span>' +
+            ' <span style="font-size:0.78em;color:#7f8c8d;margin-left:8px">(read-only)</span>';
+        } else {
+          handoffChatHeader.innerHTML =
+            '<span>Session: ' + escapeHtml(parentSid.substring(0, 20)) + '… — <span style="color:#e67e22">Waiting for librarian</span></span>' +
+            ' <span style="font-size:0.78em;color:#7f8c8d;margin-left:8px">(read-only)</span>';
         }
+        // Admin can end the chat if needed (e.g. patron left, no staff available)
+        handoffInputBar.style.display = "none";
 
         handoffMessages.innerHTML = "";
         await pollHandoffMessages();
         startHandoffPoll();
-        if (handoffInputBar.style.display !== "none") handoffReplyInput.focus();
       }
 
       async function pollHandoffMessages() {
@@ -2772,11 +2723,7 @@
 
       async function endHandoff() {
         if (!activeHandoffSid) return;
-        if (isReadOnly) {
-          alert("You are viewing this session in read-only mode. Only the assigned librarian can end it.");
-          return;
-        }
-        if (!confirm("End this chat? The patron will be returned to the bot.")) return;
+        if (!confirm("Force-end this chat? The patron will be returned to the bot. Only do this if the librarian is unavailable.")) return;
         try {
           await fetch("/admin/api/live-chat/" + encodeURIComponent(activeHandoffSid) + "/end", {
             method: "POST",
@@ -2785,7 +2732,6 @@
           stopHandoffPoll();
           activeHandoffSid = null;
           activeParentSid = null;
-          isReadOnly = false;
           handoffMessages.innerHTML = "";
           handoffChatHeader.innerHTML = "<span>Chat ended. Select another session.</span>";
           handoffInputBar.style.display = "none";
