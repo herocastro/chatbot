@@ -716,16 +716,18 @@
     pollTimer = setInterval(pollForMessages, 3000);
   }
 
-  function stopPolling() {
+  function stopPolling(keepInputDisabled) {
     handoffActive = false;
     handoffHandler = null;
     lastPollTs = 0;
     libBtn.style.opacity = "1";
     libBtn.style.cursor = "pointer";
-    // Re-enable input
-    inp.disabled = false;
-    inp.placeholder = "Type your message…";
-    btn.disabled = false;
+    // Only re-enable input if not showing the rating survey
+    if (!keepInputDisabled) {
+      inp.disabled = false;
+      inp.placeholder = "Type your message…";
+      btn.disabled = false;
+    }
     removeCancelButton();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     // Restart inactivity timer now that handoff is over
@@ -803,7 +805,7 @@
         }
         // Then check if handoff just ended — show rating AFTER messages
         if (!d.handoff_active && handoffActive) {
-          stopPolling();
+          stopPolling(true); // keep input disabled until rating is submitted
           showHandoffRating();
         }
         // Check if librarian is typing
