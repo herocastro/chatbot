@@ -867,23 +867,26 @@
   }
 
   function returnToBot() {
-    // Only run once
-    if (inp.disabled === false) return;
-    _origAddMsg("Back to help! 👋 What else can I do for you?", "b");
+    // Guard: only run once using a dedicated flag
+    if (returnToBot._done) return;
+    returnToBot._done = true;
+    _origAddMsg("Back to help! \uD83D\uDC4B What else can I do for you?", "b");
     inp.disabled = false;
     inp.placeholder = "Ask me about the library...";
     btn.disabled = !inp.value.trim();
     inp.focus();
     scroll();
   }
+  returnToBot._done = false;
 
   // Detect handoff activation from bot responses
   var _origAddMsg = addMsg;
   addMsg = function(t, c, ts, imgUrl) {
     _origAddMsg(t, c, ts, imgUrl || null);
     if (c === "b" && t && t.indexOf("notified a librarian") !== -1) {
-      // Fresh handoff request — reset handler and start polling
+      // Fresh handoff request — reset handler, flag, and start polling
       handoffHandler = null;
+      returnToBot._done = false;
       lastPollTs = Date.now() / 1000;
       startPolling();
     }
