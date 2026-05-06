@@ -66,6 +66,16 @@ GREETING_MESSAGE = (
     "I can assist with finding books, library hours, borrowing info, printing services, and more."
 )
 
+OFF_TOPIC_MESSAGE = (
+    "I'm only able to help with library and school-related topics! 😊 "
+    "I can assist you with:\n"
+    "📚 Finding books in the catalog\n"
+    "🕐 Library hours and locations\n"
+    "📋 Borrowing policies, fines, and membership info\n"
+    "🖨️ Printing services\n\n"
+    "Is there anything library-related I can help you with?"
+)
+
 HANDOFF_ACTIVATED_MESSAGE = (
     "I've notified a librarian — they'll join this chat shortly! 📨"
 )
@@ -496,14 +506,30 @@ async def chat(request: ChatRequest):
             image_url=_img_url if _img_url else None,
         )
     elif classification.intent == "greeting":
-        reply = GREETING_MESSAGE
-    else:
-        # "unclear" intent — use LLM if available, otherwise static message
+        # Use LLM for a natural, conversational greeting that remembers context
         if client and os.environ.get("OPENROUTER_API_KEY"):
             try:
                 messages_for_llm = []
                 if history:
-                    messages_for_llm.extend(history[-4:])
+                    messages_for_llm.extend(history[-6:])
+                messages_for_llm.append({"role": "user", "content": request.message})
+                llm_reply = client.chat(messages_for_llm)
+                if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
+                    reply = llm_reply
+                else:
+                    reply = GREETING_MESSAGE
+            except Exception:
+                reply = GREETING_MESSAGE
+        else:
+            reply = GREETING_MESSAGE
+    elif classification.intent == "conversational":
+        # Follow-up or clarifying message — use LLM with full history so it can
+        # continue the conversation naturally while staying on library topics.
+        if client and os.environ.get("OPENROUTER_API_KEY"):
+            try:
+                messages_for_llm = []
+                if history:
+                    messages_for_llm.extend(history[-8:])
                 messages_for_llm.append({"role": "user", "content": request.message})
                 llm_reply = client.chat(messages_for_llm)
                 if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
@@ -514,6 +540,24 @@ async def chat(request: ChatRequest):
                 reply = CLARIFYING_MESSAGE
         else:
             reply = CLARIFYING_MESSAGE
+    else:
+        # "unclear" intent — let the LLM respond, but the system prompt strictly
+        # limits it to library/school topics. Off-topic questions get redirected.
+        if client and os.environ.get("OPENROUTER_API_KEY"):
+            try:
+                messages_for_llm = []
+                if history:
+                    messages_for_llm.extend(history[-6:])
+                messages_for_llm.append({"role": "user", "content": request.message})
+                llm_reply = client.chat(messages_for_llm)
+                if isinstance(llm_reply, str) and llm_reply and "trouble" not in llm_reply.lower():
+                    reply = llm_reply
+                else:
+                    reply = OFF_TOPIC_MESSAGE
+            except Exception:
+                reply = OFF_TOPIC_MESSAGE
+        else:
+            reply = OFF_TOPIC_MESSAGE
 
     # --- Store conversation turn ---
     session_mgr.add_message(request.session_id, "user", request.message)

@@ -282,7 +282,7 @@ class TestProperty8RoutingMatchesClassificationIntent:
             patch("app.main.handle_catalog_query") as mock_catalog,
             patch(
                 "app.main.handle_library_info_query",
-                return_value="info result",
+                return_value=("info result", ""),
             ) as mock_info,
             patch("app.main.session_manager") as mock_sm,
             patch("app.main.groq_client"),
@@ -308,7 +308,7 @@ class TestProperty8RoutingMatchesClassificationIntent:
     @hyp_settings(max_examples=100)
     def test_unclear_intent_returns_clarifying_message(self, message: str):
         """When classify_query returns unclear, the response is the
-        clarifying message (neither handler is called)."""
+        off-topic message (neither handler is called)."""
         classification = ClassificationResult(intent="unclear", confidence=0.3)
 
         with (
@@ -322,7 +322,7 @@ class TestProperty8RoutingMatchesClassificationIntent:
             mock_sm.get_history.return_value = []
 
             from starlette.testclient import TestClient
-            from app.main import app, CLARIFYING_MESSAGE
+            from app.main import app, OFF_TOPIC_MESSAGE
 
             client = TestClient(app, raise_server_exceptions=False)
             resp = client.post(
@@ -331,6 +331,6 @@ class TestProperty8RoutingMatchesClassificationIntent:
             )
 
             assert resp.status_code == 200
-            assert resp.json()["reply"] == CLARIFYING_MESSAGE
+            assert resp.json()["reply"] == OFF_TOPIC_MESSAGE
             mock_catalog.assert_not_called()
             mock_info.assert_not_called()

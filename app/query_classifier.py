@@ -23,8 +23,12 @@ CLASSIFICATION_SYSTEM_PROMPT = (
     '- "catalog_search": the patron wants to find books, authors, topics, or any subject. '
     "This is the DEFAULT for anything that could be a search query.\n"
     '- "library_info": asking about hours, location, address, policies, fines, fees, membership, printing rates, printing procedure, email, contact.\n'
-    '- "greeting": ONLY saying hello/hi/hey with no other request.\n'
-    '- "unclear": ONLY truly nonsensical or completely unrelated messages.'
+    '- "greeting": ONLY saying hello/hi/hey/thanks/goodbye with no other request.\n'
+    '- "conversational": a follow-up or clarifying message in an ongoing library conversation '
+    "(e.g. 'tell me more', 'can you explain that', 'what do you mean', 'which one is better'). "
+    "Use this when the message only makes sense in context of the prior conversation.\n"
+    '- "unclear": a message that is clearly off-topic or unrelated to the library or school '
+    "(e.g. asking about weather, sports scores, cooking recipes, general trivia)."
 )
 
 CLASSIFICATION_PROMPT = (
@@ -33,7 +37,7 @@ CLASSIFICATION_PROMPT = (
     "Patron message: {message}"
 )
 
-VALID_INTENTS = {"catalog_search", "library_info", "greeting", "unclear"}
+VALID_INTENTS = {"catalog_search", "library_info", "greeting", "unclear", "conversational"}
 
 # Keywords for fast local classification (no LLM call needed)
 _INFO_KEYWORDS = {
@@ -51,6 +55,8 @@ _INFO_KEYWORDS = {
 _GREETING_PATTERNS = {
     "hi", "hello", "hey", "yo", "sup", "what up", "whats up", "what's up",
     "good morning", "good afternoon", "good evening", "howdy", "hola",
+    "thanks", "thank you", "ty", "thx", "ok", "okay", "got it", "bye", "goodbye",
+    "see you", "see ya", "later", "alright", "cool", "great", "awesome",
 }
 
 _CATALOG_KEYWORDS = {
