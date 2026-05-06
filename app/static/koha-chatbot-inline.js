@@ -842,8 +842,8 @@
       '<div style="margin-bottom:10px;font-size:0.92em;color:#333;font-weight:600">How satisfied were you with the librarian\'s assistance?</div>' +
       '<div class="lc-handoff-rate" style="flex-direction:column;gap:6px;align-items:stretch">' +
       '<button class="lc-rate-btn" data-rating="4" aria-label="Very Satisfied" style="text-align:left">😄 4 — Very Satisfied</button>' +
-      '<button class="lc-rate-btn" data-rating="3" aria-label="Satisfied" style="text-align:left">� 3 — Satisfied</button>' +
-      '<button class="lc-rate-btn" data-rating="2" aria-label="Moderately Satisfied" style="text-align:left">� 2 — Moderately Satisfied</button>' +
+      '<button class="lc-rate-btn" data-rating="3" aria-label="Satisfied" style="text-align:left">&#128077; 3 — Satisfied</button>' +
+      '<button class="lc-rate-btn" data-rating="2" aria-label="Moderately Satisfied" style="text-align:left">&#128076; 2 — Moderately Satisfied</button>' +
       '<button class="lc-rate-btn" data-rating="1" aria-label="Not Satisfied" style="text-align:left">😞 1 — Not Satisfied</button>' +
       '</div>';
     msgs.appendChild(rateDiv);
