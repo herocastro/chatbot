@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from app.admin_routes import router as admin_router, login_router as admin_login_router, set_session_store, _public_typing_router
 from app.catalog_handler import handle_catalog_query
 from app.config import Settings, load_settings
-from app.groq_client import GroqClient
+from app.groq_client import GroqClient, is_llm_available
 from app.library_info_handler import handle_library_info_query
 from app.models import ChatRequest, ChatResponse, ErrorResponse, LibraryInfo
 from app.models import FeedbackRequest
@@ -507,7 +507,7 @@ async def chat(request: ChatRequest):
         )
     elif classification.intent == "greeting":
         # Use LLM for a natural, conversational greeting that remembers context
-        if client and os.environ.get("OPENROUTER_API_KEY"):
+        if client and is_llm_available():
             try:
                 messages_for_llm = []
                 if history:
@@ -525,7 +525,7 @@ async def chat(request: ChatRequest):
     elif classification.intent == "conversational":
         # Follow-up or clarifying message — use LLM with full history so it can
         # continue the conversation naturally while staying on library topics.
-        if client and os.environ.get("OPENROUTER_API_KEY"):
+        if client and is_llm_available():
             try:
                 messages_for_llm = []
                 if history:
@@ -543,7 +543,7 @@ async def chat(request: ChatRequest):
     else:
         # "unclear" intent — let the LLM respond, but the system prompt strictly
         # limits it to library/school topics. Off-topic questions get redirected.
-        if client and os.environ.get("OPENROUTER_API_KEY"):
+        if client and is_llm_available():
             try:
                 messages_for_llm = []
                 if history:

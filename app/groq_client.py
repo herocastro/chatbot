@@ -52,6 +52,19 @@ FALLBACK_RATE_LIMIT = (
 )
 
 
+def is_llm_available() -> bool:
+    """Return True if an LLM backend is configured (Ollama or OpenRouter)."""
+    import os
+    # OpenRouter cloud key
+    if os.environ.get("OPENROUTER_API_KEY"):
+        return True
+    # Local Ollama — always available when OLLAMA_URL points to localhost
+    ollama_url = os.environ.get("OLLAMA_URL", DEFAULT_OLLAMA_URL)
+    if ollama_url:
+        return True
+    return False
+
+
 class GroqClient:
     """LLM client that talks to a local Ollama instance via its OpenAI-compatible API."""
 

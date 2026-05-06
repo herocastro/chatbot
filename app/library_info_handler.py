@@ -59,10 +59,8 @@ def load_library_info(file_path: str) -> LibraryInfo:
 
 def _is_llm_available(client: GroqClient) -> bool:
     """Check if the LLM client is configured with a real API."""
-    import os
-    return bool(os.environ.get("OPENROUTER_API_KEY") or
-                "openrouter" in os.environ.get("OLLAMA_URL", "").lower() or
-                "groq" in os.environ.get("OLLAMA_URL", "").lower())
+    from app.groq_client import is_llm_available
+    return client is not None and is_llm_available()
 
 
 def _find_matching_faqs(message: str, library_info: LibraryInfo) -> list:

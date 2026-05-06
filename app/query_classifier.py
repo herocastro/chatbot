@@ -88,6 +88,16 @@ def _quick_classify(message: str) -> str | None:
     if lower in FAQ_QUESTIONS or lower.rstrip("?") in FAQ_QUESTIONS:
         return "library_info"
 
+    # Very short messages (1-2 words, no library keywords) are conversational,
+    # not catalog searches — e.g. "no", "ok", "tf", "lol", "what?", "huh"
+    words = set(lower.replace("?", " ").replace("!", " ").replace(".", " ").split())
+    if len(words) <= 2 and not (words & _INFO_KEYWORDS) and not (words & _CATALOG_KEYWORDS):
+        # Check if it's a known greeting/ack first
+        if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
+            return "greeting"
+        # Otherwise treat as conversational (needs LLM with history to make sense of it)
+        return "conversational"
+
     # Greetings (exact or near-exact match)
     if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
         return "greeting"
@@ -95,8 +105,6 @@ def _quick_classify(message: str) -> str | None:
     # Talk to a librarian (check phrases first, then keywords)
     if lower.rstrip("!?.") in _LIBRARIAN_PHRASES or lower in _LIBRARIAN_PHRASES:
         return "talk_to_librarian"
-
-    words = set(lower.replace("?", " ").replace("!", " ").replace(".", " ").split())
 
     if words & _LIBRARIAN_KEYWORDS:
         return "talk_to_librarian"
@@ -139,12 +147,8 @@ def classify_query(
                 break
 
     # Step 3: Try LLM classification if available
-    import os
-    llm_available = bool(os.environ.get("OPENROUTER_API_KEY") or
-                         "openrouter" in os.environ.get("OLLAMA_URL", "").lower() or
-                         "groq" in os.environ.get("OLLAMA_URL", "").lower())
-
-    if client and llm_available:
+    from app.groq_client import is_llm_available
+    if client and is_llm_available():
         try:
             prompt = CLASSIFICATION_PROMPT.format(message=message)
             messages: list[dict] = []
