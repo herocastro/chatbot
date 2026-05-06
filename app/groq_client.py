@@ -2,7 +2,7 @@
 
 import logging
 
-from openai import OpenAI, APIError, APITimeoutError, RateLimitError
+from openai import OpenAI, APIError, APITimeoutError, NotFoundError, RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,13 @@ DEFAULT_MAX_TOKENS = 512
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_OLLAMA_URL = "https://openrouter.ai/api/v1"
 
-# Ordered list of fallback models to try when the primary is rate-limited.
-# All are free on OpenRouter. First available one wins.
+# Ordered list of fallback models to try when the primary is unavailable or rate-limited.
+# All are free on OpenRouter. Verified working as of 2026.
 FALLBACK_MODELS = [
-    "openai/gpt-oss-20b:free",
-    "openai/gpt-oss-120b:free",
     "google/gemma-4-31b-it:free",
-    "google/gemma-3n-e2b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
     "nvidia/nemotron-nano-9b-v2:free",
 ]
 
@@ -114,13 +114,19 @@ class GroqClient:
             except RateLimitError:
                 logger.warning("Rate limit hit for model %s, trying next...", model)
                 continue
+            except NotFoundError:
+                logger.warning("Model not found %s, trying next...", model)
+                continue
             except APITimeoutError:
                 logger.warning("Timeout for model %s, trying next...", model)
                 continue
             except APIError as exc:
-                # 429 may also surface as APIError
+                # 429 and 404 (model gone/unavailable) — try next model
                 if "429" in str(exc) or "rate" in str(exc).lower():
                     logger.warning("Rate limit (APIError) for model %s, trying next...", model)
+                    continue
+                if "404" in str(exc) or "not found" in str(exc).lower() or "no endpoints" in str(exc).lower():
+                    logger.warning("Model not found %s, trying next...", model)
                     continue
                 logger.warning("APIError for model %s: %s", model, exc)
                 return FALLBACK_GENERAL
