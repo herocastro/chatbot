@@ -225,8 +225,12 @@ async def get_unanswered_queries(
 @router.get("/ai-settings")
 async def get_ai_settings():
     """Return the current AI personality settings."""
-    from app.staff_routes import staff_store as _staff_store
+    from app.staff_routes import _get_staff_store
     from app.ai_settings import load_ai_settings
+    try:
+        _staff_store = _get_staff_store()
+    except Exception:
+        _staff_store = None
     settings = load_ai_settings(_staff_store)
     return settings.to_dict()
 
@@ -234,7 +238,7 @@ async def get_ai_settings():
 @router.put("/ai-settings")
 async def update_ai_settings(payload: dict):
     """Update AI personality settings and reload in the running app."""
-    from app.staff_routes import staff_store as _staff_store
+    from app.staff_routes import _get_staff_store
     from app.ai_settings import AiSettings, save_ai_settings
 
     name = (payload.get("name") or "").strip()
@@ -248,8 +252,8 @@ async def update_ai_settings(payload: dict):
         welcome_message=(payload.get("welcome_message") or "").strip(),
     )
 
-    # Persist to DB
     try:
+        _staff_store = _get_staff_store()
         save_ai_settings(_staff_store, new_settings)
     except Exception:
         logger.exception("Failed to save AI settings")
@@ -302,9 +306,11 @@ async def upload_image(request: Request):
 
         # Store image in DB under a unique key
         img_key = f"faq_image_{_uuid.uuid4().hex}"
-        from app.staff_routes import staff_store as _staff_store
-        if _staff_store is not None:
-            _staff_store.update_settings({img_key: data_url})
+        from app.staff_routes import _get_staff_store
+        try:
+            _get_staff_store().update_settings({img_key: data_url})
+        except Exception:
+            logger.warning("Could not save image to settings store")
 
         # Return a relative URL — the widget prepends CHATBOT_API (the chatbot origin)
         return {"url": f"/api/image/{img_key}"}
@@ -425,17 +431,14 @@ def _migrate_to_faqs(data: dict) -> dict:
 @router.get("/library-info")
 async def get_library_info():
     """Return the current library info contents (from DB or file), migrating old format if needed."""
-    # Try database first (works on Vercel)
-    from app.staff_routes import staff_store as _staff_store
-    if _staff_store is not None:
-        db_val = _staff_store.get_setting("library_info_json")
+    from app.staff_routes import _get_staff_store
+    try:
+        db_val = _get_staff_store().get_setting("library_info_json")
         if db_val:
-            try:
-                data = json.loads(db_val)
-                return _migrate_to_faqs(data)
-            except Exception:
-                pass
-    # No data in DB yet — return empty FAQs list
+            data = json.loads(db_val)
+            return _migrate_to_faqs(data)
+    except Exception:
+        pass
     return {"faqs": []}
 
 
@@ -448,14 +451,13 @@ async def update_library_info(payload: dict):
         if not isinstance(faq, dict) or not faq.get("label") or not faq.get("question"):
             return JSONResponse(status_code=400, content={"error": f"FAQ item {i} must have 'label' and 'question'."})
     clean_payload = {"faqs": payload["faqs"]}
-    # Save to database — single source of truth
-    from app.staff_routes import staff_store as _staff_store
-    if _staff_store is not None:
-        try:
-            _staff_store.update_settings({"library_info_json": json.dumps(clean_payload, ensure_ascii=False)})
-        except Exception:
-            logger.exception("Failed to save library info to database")
-            return JSONResponse(status_code=500, content={"error": "Failed to save library info"})
+
+    from app.staff_routes import _get_staff_store
+    try:
+        _get_staff_store().update_settings({"library_info_json": json.dumps(clean_payload, ensure_ascii=False)})
+    except Exception:
+        logger.exception("Failed to save library info to database")
+        return JSONResponse(status_code=500, content={"error": "Failed to save library info"})
 
     # Reload in the running app
     try:
@@ -1082,14 +1084,14 @@ _DEFAULT_HOURS: dict = {
 @router.get("/library-hours")
 async def get_library_hours():
     """Return the configured library hours (used to control librarian button availability)."""
-    from app.staff_routes import staff_store as _ss
-    if _ss is not None:
+    from app.staff_routes import _get_staff_store
+    try:
+        _ss = _get_staff_store()
         raw = _ss.get_setting("library_hours_json")
         if raw:
-            try:
-                return json.loads(raw)
-            except Exception:
-                pass
+            return json.loads(raw)
+    except Exception:
+        pass
     return _DEFAULT_HOURS
 
 
@@ -1112,10 +1114,9 @@ async def update_library_hours(payload: dict):
 
     clean = {day: payload.get(day, []) for day in days}
 
-    from app.staff_routes import staff_store as _ss
-    if _ss is None:
-        return JSONResponse(status_code=500, content={"error": "Settings store not available."})
+    from app.staff_routes import _get_staff_store
     try:
+        _ss = _get_staff_store()
         _ss.update_settings({"library_hours_json": json.dumps(clean)})
     except Exception:
         logger.exception("Failed to save library hours")
