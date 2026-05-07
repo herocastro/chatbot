@@ -244,9 +244,7 @@
           if (!wEl) return; // chat already started, don't overwrite
           if (!avail.available) {
             wEl.textContent = AFTER_HOURS_MESSAGE;
-            // Hide FAQ buttons during after-hours
-            var fqEl = msgs.querySelector(".lc-faqs");
-            if (fqEl) fqEl.style.display = "none";
+            // FAQ buttons stay visible — patron can still search books and ask library info
           } else {
             wEl.textContent = welcome;
           }
@@ -740,8 +738,7 @@
         if (!wEl) return;
         if (!avail.available) {
           wEl.textContent = AFTER_HOURS_MESSAGE;
-          var fqEl = msgs.querySelector(".lc-faqs");
-          if (fqEl) fqEl.style.display = "none";
+          // FAQ buttons stay visible — patron can still search books and ask library info
         }
       })
       .catch(function() {});
