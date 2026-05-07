@@ -732,6 +732,8 @@
     handoffHandler = null;
     lastPollTs = 0;
     ratingShown = false;
+    _joinedMsgShown = false;
+    returnToBot._done = false;
     chatHistory.length = 0;
     sid = (typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -922,7 +924,8 @@
     handoffActive = false;
     handoffHandler = null;
     lastPollTs = 0;
-    _joinedMsgShown = false;
+    // Don't reset _joinedMsgShown here — a queued poll tick firing after stopPolling
+    // would re-show the "joined" message if we clear the flag now.
     _seenMsgKeys = {};
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
@@ -982,8 +985,8 @@
     fetch(CHATBOT_API + "/api/poll/" + encodeURIComponent(sid) + "?since=" + lastPollTs)
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        // Librarian joined
-        if (d.handled_by && d.handled_by !== handoffHandler) {
+        // Librarian joined — only show if we're still in an active handoff
+        if (d.handled_by && d.handled_by !== handoffHandler && handoffActive) {
           handoffHandler = d.handled_by;
           removeCancelButton();
           inp.disabled = false;
