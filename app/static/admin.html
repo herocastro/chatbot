@@ -1965,8 +1965,9 @@
         var payload = {};
         var statusEl = document.getElementById("hours-save-status");
         var valid = true;
+        var hoursGrid = document.getElementById("hours-grid");
         DAYS.forEach(function(day) {
-          var section = document.querySelector("[data-day='" + day + "']");
+          var section = hoursGrid.querySelector("[data-day='" + day + "']");
           if (!section) return;
           var closed = section.querySelector(".hours-closed-chk").checked;
           if (closed) {

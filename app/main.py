@@ -858,10 +858,24 @@ async def poll_messages(session_id: str, since: float = 0):
                 live_chat_status = "ended"
                 handoff = False
             else:
-                live_chat_status = None
-                handoff = session_store.is_handoff_active(session_id)
+                # Secondary fallback: check sessions table directly.
+                # If handoff_active=0 AND handoff_count>0 AND message_count>0,
+                # the librarian ended the chat but the ended live_chat row isn't
+                # visible on this Vercel instance yet (cold-start DB lag).
+                # message_count>0 guard prevents false positives on empty-DB instances.
+                hs = session_store.get_session_handoff_state(session_id)
+                if (
+                    hs is not None
+                    and hs["handoff_active"] == 0
+                    and hs["handoff_count"] > 0
+                    and hs["message_count"] > 0
+                ):
+                    live_chat_status = "ended"
+                    handoff = False
+                else:
+                    live_chat_status = None
+                    handoff = session_store.is_handoff_active(session_id)
             msgs = session_store.get_new_messages_since(session_id, since)
-
         return {
             "messages": msgs,
             "handoff_active": handoff,

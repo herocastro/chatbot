@@ -727,11 +727,12 @@ class SessionStore:
         finally:
             conn.close()
 
-    def get_recently_ended_live_chat(self, parent_session_id: str, within_seconds: int = 300) -> dict | None:
+    def get_recently_ended_live_chat(self, parent_session_id: str, within_seconds: int = 3600) -> dict | None:
         """Return the most recently ended live chat for a session if it ended within the last N seconds.
 
         Used by the poll endpoint so the patron widget can detect a genuine end-of-chat.
-        Default window is 5 minutes to handle slow polls and Vercel cold-start delays.
+        Default window is 1 hour (extended from 5 min) to handle Vercel cold-start delays
+        where the ended row may not be visible on the instance handling the poll.
         """
         conn = self._get_connection()
         try:
@@ -752,6 +753,36 @@ class SessionStore:
                 "status": row["status"],
                 "created_at": row["created_at"],
                 "ended_at": row["ended_at"],
+            }
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
+    def get_session_handoff_state(self, session_id: str) -> dict | None:
+        """Return handoff-related columns from the sessions table for a given session.
+
+        Returns a dict with keys ``handoff_active``, ``handoff_count``, and
+        ``message_count``, or ``None`` if the session row does not exist.
+
+        Used by the poll endpoint as a secondary signal to detect that a librarian
+        ended the chat when ``get_recently_ended_live_chat`` returns nothing (e.g.
+        on a Vercel cold-start instance that hasn't seen the ended row yet).
+        """
+        conn = self._get_connection()
+        try:
+            row = conn.execute(
+                """SELECT handoff_active, COALESCE(handoff_count, 0) AS handoff_count,
+                          COALESCE(message_count, 0) AS message_count
+                   FROM sessions WHERE session_id = ?""",
+                (session_id,),
+            ).fetchone()
+            if not row:
+                return None
+            return {
+                "handoff_active": row["handoff_active"],
+                "handoff_count": row["handoff_count"],
+                "message_count": row["message_count"],
             }
         except Exception:
             return None
