@@ -818,7 +818,7 @@ async def get_live_chat_messages(live_chat_id: str):
                 "SELECT status, parent_session_id FROM live_chat_sessions WHERE id = ?",
                 (live_chat_id,),
             ).fetchone()
-            status = row["status"] if row else "ended"
+            status = row["status"] if row else "active"  # default active — missing row = cold-start, not ended
             # Keep the parent session alive while the live chat is active
             if row and row["status"] in ("waiting", "active") and row["parent_session_id"]:
                 import time as _time

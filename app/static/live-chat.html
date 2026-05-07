@@ -81,6 +81,8 @@
   var sessionId = "";
   var liveChatId = "";
   var pollTimer = null;
+  var _endedCount = 0; // require multiple consecutive "ended" before stopping
+  var END_THRESHOLD = 3;
 
   var params = new URLSearchParams(window.location.search);
   sessionId = params.get("session") || "";
@@ -240,9 +242,14 @@
       var data = await resp.json();
       renderMessages(data.messages || []);
       if (data.status === "ended") {
-        chatStatus.textContent = "Chat has ended";
-        document.getElementById("input-bar").style.display = "none";
-        stopPoll();
+        _endedCount++;
+        if (_endedCount >= END_THRESHOLD) {
+          chatStatus.textContent = "Chat has ended";
+          document.getElementById("input-bar").style.display = "none";
+          stopPoll();
+        }
+      } else {
+        _endedCount = 0; // reset on any active response
       }
     } catch(e) {}
   }
