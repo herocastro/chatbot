@@ -423,34 +423,19 @@ async def chat(request: ChatRequest):
     )
     if _handoff_active:
         # Patron is in handoff mode — save their message to the live chat session
+        # synchronously before returning so Vercel doesn't kill the task early.
         session_mgr.add_message(request.session_id, "user", request.message)
-        _store = session_store
-        _sid = request.session_id
-        _msg = request.message
-        _lc = _active_live_chat
-        async def _persist_handoff():
+        if session_store is not None:
             try:
-                live_chat = _lc
-                # Retry up to 3 times to handle race conditions / cold-start DB lag
-                for _attempt in range(3):
-                    if live_chat:
-                        break
-                    live_chat = _store.get_active_live_chat(_sid)
-                    if not live_chat:
-                        await asyncio.sleep(0.5)
+                live_chat = _active_live_chat
+                if not live_chat:
+                    live_chat = session_store.get_active_live_chat(request.session_id)
                 if live_chat:
-                    _store.save_live_chat_message(live_chat["id"], "user", _msg)
+                    session_store.save_live_chat_message(live_chat["id"], "user", request.message)
                 else:
-                    # Last resort: save to regular messages table so the message
-                    # is at least recorded, but log a warning.
-                    logger.warning(
-                        "Could not find active live chat for session %s — "
-                        "saving patron message to regular messages table", _sid
-                    )
-                    _store.save_message(_sid, "user", _msg, intent="handoff")
+                    session_store.save_message(request.session_id, "user", request.message, intent="handoff")
             except Exception:
-                logger.exception("Failed to persist handoff message for session %s", _sid)
-        asyncio.create_task(_persist_handoff())
+                logger.exception("Failed to persist handoff message for session %s", request.session_id)
         return ChatResponse(reply="", session_id=request.session_id, timestamp=time.time())
 
     # --- Classify intent ---
@@ -466,15 +451,10 @@ async def chat(request: ChatRequest):
             # Already in handoff — just save the message silently
             session_mgr.add_message(request.session_id, "user", request.message)
             if session_store is not None:
-                _store = session_store
-                _sid = request.session_id
-                _msg = request.message
-                async def _persist_dup():
-                    try:
-                        _store.save_message(_sid, "user", _msg, intent="handoff")
-                    except Exception:
-                        logger.exception("Failed to persist duplicate handoff msg for session %s", _sid)
-                asyncio.create_task(_persist_dup())
+                try:
+                    session_store.save_message(request.session_id, "user", request.message, intent="handoff")
+                except Exception:
+                    logger.exception("Failed to persist duplicate handoff msg for session %s", request.session_id)
             return ChatResponse(reply="", session_id=request.session_id, timestamp=time.time())
 
         # First time — activate handoff and notify
@@ -551,18 +531,11 @@ async def chat(request: ChatRequest):
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
         if session_store is not None:
-            _store = session_store
-            _sid = request.session_id
-            _msg = request.message
-            _reply = reply
-            _intent = classification.intent
-            async def _persist_info():
-                try:
-                    _store.save_message(_sid, "user", _msg, intent=_intent)
-                    _store.save_message(_sid, "assistant", _reply)
-                except Exception:
-                    logger.exception("Failed to persist messages for session %s", _sid)
-            asyncio.create_task(_persist_info())
+            try:
+                session_store.save_message(request.session_id, "user", request.message, intent=classification.intent)
+                session_store.save_message(request.session_id, "assistant", reply)
+            except Exception:
+                logger.exception("Failed to persist messages for session %s", request.session_id)
         return ChatResponse(
             reply=reply,
             session_id=request.session_id,
@@ -584,22 +557,13 @@ async def chat(request: ChatRequest):
     session_mgr.add_message(request.session_id, "user", request.message)
     session_mgr.add_message(request.session_id, "assistant", reply)
 
-    # --- Persist to SQLite session store (non-blocking) ---
+    # --- Persist to SQLite session store (synchronous — Vercel kills background tasks) ---
     if session_store is not None:
-        _store = session_store
-        _sid = request.session_id
-        _msg = request.message
-        _reply = reply
-        _intent = classification.intent
-
-        async def _persist():
-            try:
-                _store.save_message(_sid, "user", _msg, intent=_intent)
-                _store.save_message(_sid, "assistant", _reply)
-            except Exception:
-                logger.exception("Failed to persist messages for session %s", _sid)
-
-        asyncio.create_task(_persist())
+        try:
+            session_store.save_message(request.session_id, "user", request.message, intent=classification.intent)
+            session_store.save_message(request.session_id, "assistant", reply)
+        except Exception:
+            logger.exception("Failed to persist messages for session %s", request.session_id)
 
     return ChatResponse(reply=reply, session_id=request.session_id, timestamp=time.time())
 
