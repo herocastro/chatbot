@@ -306,6 +306,18 @@ class SessionStore:
                 CREATE INDEX IF NOT EXISTS idx_lcm_chat ON live_chat_messages(live_chat_id);
             """)
             conn.commit()
+
+            # Add patron_info column to live_chat_sessions if missing
+            lcs_cols = [row["name"] for row in conn.execute("PRAGMA table_info(live_chat_sessions)").fetchall()]
+            if "patron_info" not in lcs_cols:
+                conn.execute("ALTER TABLE live_chat_sessions ADD COLUMN patron_info TEXT DEFAULT NULL")
+                conn.commit()
+
+            # Add patron_info to sessions table as well (for sessions without live chat)
+            sess_cols2 = [row["name"] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()]
+            if "patron_info" not in sess_cols2:
+                conn.execute("ALTER TABLE sessions ADD COLUMN patron_info TEXT DEFAULT NULL")
+                conn.commit()
         finally:
             conn.close()
 
@@ -582,6 +594,76 @@ class SessionStore:
                 {"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]}
                 for r in rows
             ]
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # Patron identity
+    # ------------------------------------------------------------------
+
+    def save_patron_info(self, session_id: str, patron_type: str, patron_details: str) -> None:
+        """Save patron identity info for a session and its active live chat."""
+        import json as _json
+        info = _json.dumps({"patron_type": patron_type, "patron_details": patron_details})
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                "UPDATE sessions SET patron_info = ? WHERE session_id = ?",
+                (info, session_id),
+            )
+            conn.execute(
+                """UPDATE live_chat_sessions SET patron_info = ?
+                   WHERE parent_session_id = ? AND status IN ('waiting', 'active')""",
+                (info, session_id),
+            )
+            conn.commit()
+        except Exception:
+            logger.exception("Failed to save patron info for session %s", session_id)
+            raise
+        finally:
+            conn.close()
+
+    def get_patron_info(self, session_id: str) -> dict | None:
+        """Return patron identity info for a session, or None if not set."""
+        import json as _json
+        conn = self._get_connection()
+        try:
+            # Try live chat first (most recent)
+            row = conn.execute(
+                """SELECT patron_info FROM live_chat_sessions
+                   WHERE parent_session_id = ?
+                   ORDER BY created_at DESC LIMIT 1""",
+                (session_id,),
+            ).fetchone()
+            if row and row["patron_info"]:
+                return _json.loads(row["patron_info"])
+            # Fall back to session row
+            row = conn.execute(
+                "SELECT patron_info FROM sessions WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            if row and row["patron_info"]:
+                return _json.loads(row["patron_info"])
+            return None
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
+    def get_patron_info_by_live_chat(self, live_chat_id: str) -> dict | None:
+        """Return patron identity info for a live chat session."""
+        import json as _json
+        conn = self._get_connection()
+        try:
+            row = conn.execute(
+                "SELECT patron_info FROM live_chat_sessions WHERE id = ?",
+                (live_chat_id,),
+            ).fetchone()
+            if row and row["patron_info"]:
+                return _json.loads(row["patron_info"])
+            return None
+        except Exception:
+            return None
         finally:
             conn.close()
 

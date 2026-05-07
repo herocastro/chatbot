@@ -1035,6 +1035,34 @@ async def delete_live_chat_history(
         return JSONResponse(status_code=500, content={"error": "Failed to delete live chat history"})
 
 
+@router.get("/sessions/{session_id}/patron-info")
+async def get_session_patron_info(session_id: str):
+    """Return patron identity info for a session."""
+    store = _get_store()
+    try:
+        info = store.get_patron_info(session_id)
+        if info:
+            return info
+        return {"patron_type": None, "patron_details": None}
+    except Exception:
+        logger.exception("Failed to get patron info for session %s", session_id)
+        return JSONResponse(status_code=500, content={"error": "Failed to get patron info"})
+
+
+@router.get("/live-chat/{live_chat_id}/patron-info")
+async def get_live_chat_patron_info(live_chat_id: str):
+    """Return patron identity info for a live chat session."""
+    store = _get_store()
+    try:
+        info = store.get_patron_info_by_live_chat(live_chat_id)
+        if info:
+            return info
+        return {"patron_type": None, "patron_details": None}
+    except Exception:
+        logger.exception("Failed to get patron info for live chat %s", live_chat_id)
+        return JSONResponse(status_code=500, content={"error": "Failed to get patron info"})
+
+
 # ------------------------------------------------------------------
 # Library Hours Management
 # ------------------------------------------------------------------

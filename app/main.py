@@ -775,6 +775,44 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
     }
 
 
+class PatronInfoRequest(BaseModel):
+    session_id: str
+    patron_type: str   # e.g. "Student (Higher Ed)"
+    patron_details: str  # e.g. "BSIT 3rd Year"
+
+
+@app.post("/api/patron-info")
+async def save_patron_info(request: PatronInfoRequest):
+    """Save patron identity info collected before a librarian handoff."""
+    if not request.session_id or not request.session_id.strip():
+        return JSONResponse(status_code=400, content={"error": "Session identifier is required"})
+    if not request.patron_type or not request.patron_type.strip():
+        return JSONResponse(status_code=400, content={"error": "Patron type is required"})
+    if session_store is None:
+        return JSONResponse(status_code=500, content={"error": "Store not available"})
+    try:
+        session_store.save_patron_info(
+            request.session_id,
+            request.patron_type.strip(),
+            request.patron_details.strip(),
+        )
+        return {"status": "ok"}
+    except Exception:
+        logger.exception("Failed to save patron info for session %s", request.session_id)
+        return JSONResponse(status_code=500, content={"error": "Failed to save patron info"})
+
+
+@app.get("/api/patron-info/{session_id}")
+async def get_patron_info(session_id: str):
+    """Return patron identity info for a session (used by librarian dashboard)."""
+    if session_store is None:
+        return {"patron_type": None, "patron_details": None}
+    info = session_store.get_patron_info(session_id)
+    if info:
+        return info
+    return {"patron_type": None, "patron_details": None}
+
+
 @app.get("/api/librarian-available")
 async def librarian_available():
     """Return whether the Talk-to-a-Librarian button should be enabled.

@@ -199,9 +199,38 @@
         chatStatus.innerHTML = "Connected as <strong>" + esc(myName) + "</strong>";
       }
     } catch(e) { chatStatus.textContent = "Connected"; }
+    await loadPatronInfo();
     await loadMessages();
     startPoll();
     replyInput.focus();
+  }
+
+  async function loadPatronInfo() {
+    if (!liveChatId) return;
+    try {
+      var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/patron-info", { headers: { "X-Admin-Key": apiKey } });
+      var data = await resp.json();
+      renderPatronCard(data);
+    } catch(e) {}
+  }
+
+  function renderPatronCard(info) {
+    var existing = document.getElementById("patron-identity-card");
+    if (existing) existing.remove();
+    if (!info || !info.patron_type) return;
+    var card = document.createElement("div");
+    card.id = "patron-identity-card";
+    card.style.cssText =
+      "background:linear-gradient(135deg,#0E553F,#1a7a5a);color:#fff;padding:12px 16px;" +
+      "font-size:0.85rem;display:flex;align-items:center;gap:10px;flex-shrink:0;";
+    card.innerHTML =
+      '<span style="font-size:1.3em">👤</span>' +
+      '<div>' +
+        '<div style="font-weight:600;font-size:0.9em">' + esc(info.patron_type) + '</div>' +
+        (info.patron_details ? '<div style="opacity:0.88;font-size:0.82em">' + esc(info.patron_details) + '</div>' : '') +
+      '</div>';
+    // Insert before chat messages
+    chatMessages.parentNode.insertBefore(card, chatMessages);
   }
 
   async function loadMessages() {

@@ -570,12 +570,115 @@
   checkLibrarianAvailability();
   setInterval(checkLibrarianAvailability, 60000);
 
+  // --- Patron identity form (shown before handoff) ---
+  var _patronType = "";
+  var _patronDetails = "";
+
+  var _PATRON_TYPES = [
+    { label: "🎓 Student (Higher Ed)",   value: "Student (Higher Ed)",   prompt: "Please enter your Course & Year (e.g. BSIT 3rd Year):" },
+    { label: "📚 Student (Basic Ed)",    value: "Student (Basic Ed)",    prompt: "Please enter your Grade & Section (e.g. Grade 10 - Rizal):" },
+    { label: "👩‍🏫 Faculty / Staff",       value: "Faculty / Staff",       prompt: "Please enter your Department (e.g. College of Engineering):" },
+    { label: "🏛️ Alumni",               value: "Alumni",                prompt: "Please enter your name:" },
+    { label: "🙋 Visitor",              value: "Visitor",               prompt: "Please enter your name:" },
+  ];
+
+  function showPatronTypeStep() {
+    // Remove any existing identity form
+    var old = document.getElementById("lc-patron-form");
+    if (old) old.remove();
+
+    var w = msgs.querySelector(".lc-w"); if (w) w.remove();
+    var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
+
+    // Bot message asking for type
+    var botMsg = document.createElement("div");
+    botMsg.className = "lc-m b";
+    botMsg.id = "lc-patron-form";
+    botMsg.style.cssText = "max-width:90%;white-space:normal";
+    botMsg.innerHTML =
+      '<div style="margin-bottom:10px;font-size:.9em;line-height:1.5">' +
+      'Hello! 👋 Before connecting you to a librarian, please tell us who you are:' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px">' +
+      _PATRON_TYPES.map(function(t) {
+        return '<button class="lc-patron-type-btn" data-value="' + t.value + '" data-prompt="' + t.prompt.replace(/"/g, "&quot;") + '" ' +
+          'style="background:#fff;border:1px solid #D4A017;color:#0E553F;border-radius:14px;' +
+          'padding:8px 14px;font-size:.82rem;cursor:pointer;text-align:left;transition:all .15s">' +
+          t.label + '</button>';
+      }).join("") +
+      '</div>';
+    msgs.appendChild(botMsg);
+    scroll();
+
+    // Attach click handlers
+    botMsg.querySelectorAll(".lc-patron-type-btn").forEach(function(b) {
+      b.addEventListener("click", function() {
+        _patronType = b.getAttribute("data-value");
+        var prompt = b.getAttribute("data-prompt");
+        // Show user's choice as a chat bubble
+        _origAddMsg(_patronType, "u");
+        showPatronDetailsStep(prompt);
+      });
+    });
+  }
+
+  function showPatronDetailsStep(prompt) {
+    // Remove the type selection form
+    var old = document.getElementById("lc-patron-form");
+    if (old) old.remove();
+
+    var detailMsg = document.createElement("div");
+    detailMsg.className = "lc-m b";
+    detailMsg.id = "lc-patron-form";
+    detailMsg.style.cssText = "max-width:90%;white-space:normal";
+    detailMsg.innerHTML =
+      '<div style="margin-bottom:8px;font-size:.9em">' + prompt + '</div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<input id="lc-patron-detail-input" type="text" placeholder="Type here…" ' +
+      'style="flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:14px;font-size:.85rem;outline:none" />' +
+      '<button id="lc-patron-detail-btn" ' +
+      'style="background:#0E553F;color:#fff;border:none;border-radius:14px;padding:8px 14px;font-size:.82rem;cursor:pointer">' +
+      'OK</button>' +
+      '</div>';
+    msgs.appendChild(detailMsg);
+    scroll();
+
+    var detailInput = document.getElementById("lc-patron-detail-input");
+    var detailBtn = document.getElementById("lc-patron-detail-btn");
+
+    detailInput.focus();
+
+    function submitDetails() {
+      var val = detailInput.value.trim();
+      if (!val) { detailInput.style.borderColor = "#e74c3c"; return; }
+      _patronDetails = val;
+      // Show as user bubble
+      _origAddMsg(_patronDetails, "u");
+      // Remove form
+      var f = document.getElementById("lc-patron-form");
+      if (f) f.remove();
+      // Save to server then trigger handoff
+      fetch(CHATBOT_API + "/api/patron-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
+      }).catch(function() {});
+      // Now trigger the actual handoff
+      inp.value = "Ask a librarian";
+      btn.disabled = false;
+      send();
+    }
+
+    detailBtn.addEventListener("click", submitDetails);
+    detailInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { e.preventDefault(); submitDetails(); }
+    });
+  }
+
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
     if (!libBtnAvailable) return; // outside library hours
-    inp.value = "Ask a librarian";
-    btn.disabled = false;
-    send();
+    showPatronTypeStep();
   });
 
   // --- 5-minute inactivity timer ---
