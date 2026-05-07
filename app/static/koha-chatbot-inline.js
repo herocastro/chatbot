@@ -115,7 +115,8 @@
     "#lc-librarian{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;" +
     "border-radius:14px;padding:4px 10px;font-size:.72rem;cursor:pointer;" +
     "transition:background .15s;white-space:nowrap}" +
-    "#lc-librarian:hover{background:rgba(255,255,255,.15)}" +
+    "#lc-librarian:hover:not(:disabled){background:rgba(255,255,255,.15)}" +
+    "#lc-librarian:disabled{opacity:.45;cursor:not-allowed;border-color:rgba(255,255,255,.2)}" +
     "@media(max-width:480px){#lc-wrap{bottom:0;right:0;width:100vw;" +
     "height:100vh;max-width:100vw;max-height:100vh;border-radius:0}" +
     "#lc-fab{bottom:16px;right:16px}}";
@@ -507,8 +508,44 @@
 
   // Talk to a Librarian header button — triggers handoff via chat
   var libBtn = document.getElementById("lc-librarian");
+  var libBtnAvailable = true; // tracks current availability state
+
+  function setLibrarianButtonState(available, reason) {
+    libBtnAvailable = available;
+    if (available) {
+      libBtn.disabled = false;
+      libBtn.style.opacity = "1";
+      libBtn.style.cursor = "pointer";
+      libBtn.title = "";
+    } else {
+      libBtn.disabled = true;
+      libBtn.style.opacity = "0.45";
+      libBtn.style.cursor = "not-allowed";
+      libBtn.title = reason || "Librarian chat is currently unavailable.";
+    }
+  }
+
+  function checkLibrarianAvailability() {
+    fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        // Don't override state if handoff is already active
+        if (!handoffActive) {
+          setLibrarianButtonState(d.available, d.reason);
+        }
+      })
+      .catch(function() {
+        // On error, leave button as-is (fail open)
+      });
+  }
+
+  // Check immediately on load, then every 60 seconds
+  checkLibrarianAvailability();
+  setInterval(checkLibrarianAvailability, 60000);
+
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
+    if (!libBtnAvailable) return; // outside library hours
     inp.value = "Ask a librarian";
     btn.disabled = false;
     send();
@@ -563,12 +600,10 @@
     inp.disabled = false;
     inp.placeholder = "Type your message…";
     btn.disabled = false;
-    libBtn.style.opacity = "1";
-    libBtn.style.cursor = "pointer";
+    // Re-check librarian availability after reset
+    checkLibrarianAvailability();
     saveState();
   }
-
-  document.getElementById("lc-new").addEventListener("click", function () {
     // Close the old session on the server
     if (sid) {
       var oldSid = sid;
@@ -724,8 +759,12 @@
     handoffActive = false;
     handoffHandler = null;
     lastPollTs = 0;
-    libBtn.style.opacity = "1";
-    libBtn.style.cursor = "pointer";
+    // Restore librarian button only if it was available before handoff started
+    if (libBtnAvailable) {
+      libBtn.style.opacity = "1";
+      libBtn.style.cursor = "pointer";
+      libBtn.disabled = false;
+    }
     // Only re-enable input if not showing the rating survey
     if (!keepInputDisabled) {
       inp.disabled = false;
@@ -736,6 +775,8 @@
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     // Restart inactivity timer now that handoff is over
     resetInactivityTimer();
+    // Re-check librarian availability after handoff ends
+    checkLibrarianAvailability();
   }
 
   function showCancelButton() {

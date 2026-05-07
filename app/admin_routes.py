@@ -1033,3 +1033,63 @@ async def delete_live_chat_history(
     except Exception:
         logger.exception("Failed to delete live chat history")
         return JSONResponse(status_code=500, content={"error": "Failed to delete live chat history"})
+
+
+# ------------------------------------------------------------------
+# Library Hours Management
+# ------------------------------------------------------------------
+
+_DEFAULT_HOURS: dict = {
+    "monday":    [{"open": "07:00", "close": "19:00"}],
+    "tuesday":   [{"open": "07:00", "close": "19:00"}],
+    "wednesday": [{"open": "07:00", "close": "19:00"}],
+    "thursday":  [{"open": "07:00", "close": "19:00"}],
+    "friday":    [{"open": "07:00", "close": "19:00"}],
+    "saturday":  [{"open": "08:30", "close": "16:30"}],
+    "sunday":    [],
+}
+
+
+@router.get("/library-hours")
+async def get_library_hours():
+    """Return the configured library hours (used to control librarian button availability)."""
+    from app.staff_routes import staff_store as _ss
+    if _ss is not None:
+        raw = _ss.get_setting("library_hours_json")
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                pass
+    return _DEFAULT_HOURS
+
+
+@router.put("/library-hours")
+async def update_library_hours(payload: dict):
+    """Update library hours. Payload is a dict of day -> list of {open, close} windows."""
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    import re
+    time_re = re.compile(r"^\d{2}:\d{2}$")
+
+    for day in days:
+        windows = payload.get(day, [])
+        if not isinstance(windows, list):
+            return JSONResponse(status_code=400, content={"error": f"'{day}' must be a list of time windows."})
+        for w in windows:
+            if not isinstance(w, dict) or "open" not in w or "close" not in w:
+                return JSONResponse(status_code=400, content={"error": f"Each window in '{day}' must have 'open' and 'close' keys."})
+            if not time_re.match(w["open"]) or not time_re.match(w["close"]):
+                return JSONResponse(status_code=400, content={"error": f"Times in '{day}' must be in HH:MM format."})
+
+    clean = {day: payload.get(day, []) for day in days}
+
+    from app.staff_routes import staff_store as _ss
+    if _ss is None:
+        return JSONResponse(status_code=500, content={"error": "Settings store not available."})
+    try:
+        _ss.update_settings({"library_hours_json": json.dumps(clean)})
+    except Exception:
+        logger.exception("Failed to save library hours")
+        return JSONResponse(status_code=500, content={"error": "Failed to save library hours."})
+
+    return {"status": "ok", "message": "Library hours updated."}

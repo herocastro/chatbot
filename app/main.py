@@ -678,6 +678,119 @@ async def get_messenger_link():
     return {"messenger_link": link}
 
 
+# Default library hours (Philippines — Lorma Colleges libraries).
+# Each day maps to a list of {open, close} windows in 24-h "HH:MM" format.
+# An empty list means the library is closed that day.
+_DEFAULT_LIBRARY_HOURS: dict = {
+    "monday":    [{"open": "07:00", "close": "19:00"}],
+    "tuesday":   [{"open": "07:00", "close": "19:00"}],
+    "wednesday": [{"open": "07:00", "close": "19:00"}],
+    "thursday":  [{"open": "07:00", "close": "19:00"}],
+    "friday":    [{"open": "07:00", "close": "19:00"}],
+    "saturday":  [{"open": "08:30", "close": "16:30"}],
+    "sunday":    [],
+}
+
+# How many minutes before closing the librarian button is disabled.
+_LIBRARIAN_CUTOFF_MINUTES = 30
+
+
+def _get_library_hours() -> dict:
+    """Return the configured library hours from DB, falling back to defaults."""
+    try:
+        from app.staff_routes import staff_store as _ss
+        if _ss is not None:
+            raw = _ss.get_setting("library_hours_json")
+            if raw:
+                import json as _json
+                return _json.loads(raw)
+    except Exception:
+        pass
+    return _DEFAULT_LIBRARY_HOURS
+
+
+def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
+    """Check whether the librarian button should be enabled right now.
+
+    Uses Asia/Manila timezone (UTC+8, no DST).
+    Returns {"available": bool, "reason": str, "closes_at": str|None}.
+    """
+    import datetime
+
+    # Philippines is UTC+8 with no DST.
+    ph_tz = datetime.timezone(datetime.timedelta(hours=8))
+    now = datetime.datetime.now(ph_tz)
+    day_name = now.strftime("%A").lower()  # e.g. "monday"
+
+    windows = hours.get(day_name, [])
+    if not windows:
+        return {
+            "available": False,
+            "reason": "The library is closed today.",
+            "closes_at": None,
+        }
+
+    now_time = now.time().replace(second=0, microsecond=0)
+
+    for window in windows:
+        try:
+            open_h, open_m = map(int, window["open"].split(":"))
+            close_h, close_m = map(int, window["close"].split(":"))
+        except (KeyError, ValueError):
+            continue
+
+        open_time = datetime.time(open_h, open_m)
+        close_time = datetime.time(close_h, close_m)
+        cutoff_dt = (
+            datetime.datetime.combine(now.date(), close_time, tzinfo=ph_tz)
+            - datetime.timedelta(minutes=cutoff_minutes)
+        )
+        cutoff_time = cutoff_dt.time()
+
+        if open_time <= now_time < cutoff_time:
+            # Within hours and before cutoff — available
+            close_str = window["close"]
+            return {
+                "available": True,
+                "reason": f"Librarians are available until {close_str}.",
+                "closes_at": close_str,
+            }
+        elif cutoff_time <= now_time < close_time:
+            # Within the 30-min cutoff window
+            close_str = window["close"]
+            return {
+                "available": False,
+                "reason": (
+                    f"The library closes at {close_str}. "
+                    f"The librarian chat is disabled {cutoff_minutes} minutes before closing."
+                ),
+                "closes_at": close_str,
+            }
+
+    # Outside all windows for today
+    return {
+        "available": False,
+        "reason": "The library is currently closed.",
+        "closes_at": None,
+    }
+
+
+@app.get("/api/librarian-available")
+async def librarian_available():
+    """Return whether the Talk-to-a-Librarian button should be enabled.
+
+    Checks current Philippines time (Asia/Manila, UTC+8) against the
+    configured library hours. The button is disabled 30 minutes before
+    closing time.
+    """
+    hours = _get_library_hours()
+    result = _check_librarian_available(hours, _LIBRARIAN_CUTOFF_MINUTES)
+    return JSONResponse(
+        content=result,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
 @app.get("/api/poll/{session_id}")
 async def poll_messages(session_id: str, since: float = 0):
     """Patron polls for new messages (librarian replies) since a timestamp."""
