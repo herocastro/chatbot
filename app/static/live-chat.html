@@ -355,24 +355,31 @@
     var text = replyInput.value.trim();
     if (!text || !liveChatId) return;
     replyInput.value = "";
-    // Show message instantly (optimistic UI) — marked so poll can replace it with DB version
+    // Show message instantly (optimistic UI)
     var div = document.createElement("div");
     div.className = "msg msg-librarian msg-optimistic";
-    // Store raw text as a data attribute so appendNewMessages can match it reliably
-    // (bubble.textContent strips HTML entities, but esc() encodes them — comparing
-    //  the raw text avoids false mismatches on messages containing &, <, >, etc.)
     div.dataset.optimisticText = text;
     var time = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
     div.innerHTML = '<div class="msg-label" style="text-align:right">👩‍💼 ' + esc(myName) + ' · ' + time + '</div><div class="bubble">' + esc(text) + '</div>';
+    // Status indicator appended after the bubble
+    var statusSpan = document.createElement("span");
+    statusSpan.style.cssText = "font-size:.7rem;opacity:.5;display:block;text-align:right;margin-top:2px;padding-right:2px";
+    statusSpan.textContent = "Sending…";
+    div.appendChild(statusSpan);
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     try {
-      await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/reply", {
+      var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Key": apiKey },
         body: JSON.stringify({ message: text, sender_name: myName })
       });
-    } catch(e) {}
+      statusSpan.textContent = resp.ok ? "✓ Sent" : "✗ Failed";
+      if (!resp.ok) statusSpan.style.color = "#e74c3c";
+    } catch(e) {
+      statusSpan.textContent = "✗ Failed";
+      statusSpan.style.color = "#e74c3c";
+    }
     replyInput.focus();
   }
 

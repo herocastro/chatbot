@@ -805,12 +805,27 @@
     // the message to the live chat session regardless of whether the librarian
     // has joined yet (handoffHandler may be null while waiting).
     if (handoffActive) {
-      // Just send the message, no loading state — librarian sees it via poll
+      // Get the last message bubble we just added so we can update its status
+      var lastBubble = msgs.lastElementChild;
       fetch(CHATBOT_API + "/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, session_id: sid })
-      }).catch(function() {});
+      }).then(function(r) {
+        if (lastBubble && r.ok) {
+          var tick = document.createElement("span");
+          tick.style.cssText = "font-size:.7rem;opacity:.6;margin-left:6px";
+          tick.textContent = "✓";
+          lastBubble.appendChild(tick);
+        }
+      }).catch(function() {
+        if (lastBubble) {
+          var err = document.createElement("span");
+          err.style.cssText = "font-size:.7rem;color:#e74c3c;margin-left:6px";
+          err.textContent = "✗ not sent";
+          lastBubble.appendChild(err);
+        }
+      });
       inp.disabled = false; inp.focus(); btn.disabled = false;
       return;
     }
