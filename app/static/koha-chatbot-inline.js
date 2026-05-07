@@ -747,6 +747,8 @@
       .catch(function() {});
     saveState();
   }
+
+  document.getElementById("lc-new").addEventListener("click", function () {
     // Close the old session on the server
     if (sid) {
       var oldSid = sid;
