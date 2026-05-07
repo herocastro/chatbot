@@ -211,11 +211,21 @@
   if (initFaqContainer) loadAndRenderFaqs(initFaqContainer);
 
   // Load AI config (name + welcome message) from server
+  // Also checks library hours to show after-hours message when closed
+  var AFTER_HOURS_MESSAGE = (
+    "Hello! Thank you for reaching out. I'm LLORA, your virtual assistant. " +
+    "Our team is currently offline. Please leave your questions or inquiries, " +
+    "and we'll get back to you as soon as we resume operations.\n\n" +
+    "Thank you for your patience and understanding! 🙏"
+  );
+
   fetch(CHATBOT_API + "/api/ai-config?t=" + Date.now())
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var name = d.name || "LLORA";
       var welcome = d.welcome_message || ("Hi! 👋 I'm " + name + ", your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?");
+      // Replace LLORA placeholder in after-hours message with actual bot name
+      AFTER_HOURS_MESSAGE = AFTER_HOURS_MESSAGE.replace("LLORA", name);
       // Update header
       var hdr = document.getElementById("lc-hdr");
       if (hdr) {
@@ -226,9 +236,26 @@
           if (n.nodeType === 3) n.textContent = " " + name + " — Library Assistant";
         });
       }
-      // Update welcome message (only if chat hasn't started)
-      var wEl = msgs.querySelector(".lc-w");
-      if (wEl) wEl.textContent = welcome;
+      // Check library hours — show after-hours message if closed
+      fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
+        .then(function(r2) { return r2.json(); })
+        .then(function(avail) {
+          var wEl = msgs.querySelector(".lc-w");
+          if (!wEl) return; // chat already started, don't overwrite
+          if (!avail.available) {
+            wEl.textContent = AFTER_HOURS_MESSAGE;
+            // Hide FAQ buttons during after-hours
+            var fqEl = msgs.querySelector(".lc-faqs");
+            if (fqEl) fqEl.style.display = "none";
+          } else {
+            wEl.textContent = welcome;
+          }
+        })
+        .catch(function() {
+          // On error, show normal welcome
+          var wEl = msgs.querySelector(".lc-w");
+          if (wEl) wEl.textContent = welcome;
+        });
     })
     .catch(function() {});
 
@@ -602,6 +629,19 @@
     btn.disabled = false;
     // Re-check librarian availability after reset
     checkLibrarianAvailability();
+    // Also update welcome message based on current hours
+    fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(avail) {
+        var wEl = msgs.querySelector(".lc-w");
+        if (!wEl) return;
+        if (!avail.available) {
+          wEl.textContent = AFTER_HOURS_MESSAGE;
+          var fqEl = msgs.querySelector(".lc-faqs");
+          if (fqEl) fqEl.style.display = "none";
+        }
+      })
+      .catch(function() {});
     saveState();
   }
     // Close the old session on the server
