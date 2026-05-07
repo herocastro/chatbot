@@ -258,7 +258,6 @@
   }
 
   function appendNewMessages(msgs) {
-    // Remove empty-state placeholder on first real message
     var empty = chatMessages.querySelector(".empty-state");
 
     // Filter to only messages newer than what we've already rendered
@@ -267,11 +266,26 @@
 
     if (empty) empty.remove();
 
-    // Remove any optimistic messages the librarian sent (they'll be replaced by DB version)
-    var optimistic = chatMessages.querySelectorAll(".msg-optimistic");
-    optimistic.forEach(function(el) { el.remove(); });
-
     newMsgs.forEach(function(m) {
+      // If this is a librarian message, check if an optimistic version exists
+      // and replace it instead of appending a duplicate
+      if (m.role === "librarian") {
+        var optimistics = chatMessages.querySelectorAll(".msg-optimistic");
+        var replaced = false;
+        for (var i = 0; i < optimistics.length; i++) {
+          var bubble = optimistics[i].querySelector(".bubble");
+          if (bubble && bubble.textContent === m.content) {
+            // Replace optimistic with confirmed DB version
+            optimistics[i].classList.remove("msg-optimistic");
+            replaced = true;
+            break;
+          }
+        }
+        if (replaced) {
+          if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
+          return;
+        }
+      }
       var div = document.createElement("div");
       var cls = "msg ", label = "";
       if (m.role === "user") { cls += "msg-user"; label = "👤 Patron"; }
