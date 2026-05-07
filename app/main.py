@@ -852,8 +852,20 @@ async def poll_messages(session_id: str, since: float = 0):
             ended_chat = session_store.get_recently_ended_live_chat(session_id)
             live_chat_id = ended_chat["id"] if ended_chat else None
             handled_by = ended_chat["staff_username"] if ended_chat else None
-            live_chat_status = "ended" if ended_chat else None
-            handoff = session_store.is_handoff_active(session_id)
+            # live_chat_status = "ended" if we found a recently-ended chat,
+            # OR if the session's handoff_active flag was cleared (librarian ended it)
+            # but the ended_chat row is outside the window or on a different instance.
+            was_active = session_store.is_handoff_active(session_id)
+            if ended_chat:
+                live_chat_status = "ended"
+                handoff = False
+            elif not was_active:
+                # handoff_active = 0 means librarian ended it — tell patron
+                live_chat_status = "ended"
+                handoff = False
+            else:
+                live_chat_status = None
+                handoff = was_active
             msgs = session_store.get_new_messages_since(session_id, since)
 
         return {

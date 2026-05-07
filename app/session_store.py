@@ -727,11 +727,11 @@ class SessionStore:
         finally:
             conn.close()
 
-    def get_recently_ended_live_chat(self, parent_session_id: str, within_seconds: int = 30) -> dict | None:
+    def get_recently_ended_live_chat(self, parent_session_id: str, within_seconds: int = 300) -> dict | None:
         """Return the most recently ended live chat for a session if it ended within the last N seconds.
 
-        Used by the poll endpoint so the patron widget can detect a genuine end-of-chat
-        (as opposed to a cold-start false negative).
+        Used by the poll endpoint so the patron widget can detect a genuine end-of-chat.
+        Default window is 5 minutes to handle slow polls and Vercel cold-start delays.
         """
         conn = self._get_connection()
         try:
