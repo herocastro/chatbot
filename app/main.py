@@ -470,35 +470,33 @@ async def chat(request: ChatRequest):
                 logger.info("Created live chat %s for session %s", live_chat_id, request.session_id)
             except Exception:
                 logger.exception("Failed to activate handoff for session %s", request.session_id)
-        # Send notification in background (ntfy push or email)
+        # Send notification (email/ntfy) — awaited so Vercel doesn't kill it before it runs
         if settings:
             _cfg = settings
             _sid = request.session_id
-            async def _send_notification():
-                import json as _json
-                from app.email_notify import send_ntfy_notification, send_handoff_email, send_staff_notify_email
+            try:
+                from app.email_notify import send_ntfy_notification, send_staff_notify_email, _use_service_account
                 if _cfg.ntfy_topic:
                     send_ntfy_notification(_cfg.ntfy_topic, _sid, _cfg.chatbot_public_url)
-                from app.email_notify import _use_service_account
                 _has_email = (_cfg.smtp_email and _cfg.smtp_password) or _use_service_account()
                 if _has_email:
-                    # Email all active staff contacts (personalized by name)
+                    from app.staff_routes import _get_store as _get_ss
                     try:
-                        from app.staff_routes import staff_store as _ss
-                        if _ss:
-                            contacts = _ss.get_active_contacts()
-                            logger.info("Notifying %d staff contacts for session %s", len(contacts), _sid)
-                            for c in contacts:
-                                try:
-                                    send_staff_notify_email(
-                                        _cfg.smtp_email, _cfg.smtp_password,
-                                        c["email"], c["name"], _sid, _cfg.chatbot_public_url,
-                                    )
-                                except Exception:
-                                    logger.exception("Failed to notify contact %s", c["email"])
+                        _ss = _get_ss()
+                        contacts = _ss.get_active_contacts()
+                        logger.info("Notifying %d staff contacts for session %s", len(contacts), _sid)
+                        for c in contacts:
+                            try:
+                                send_staff_notify_email(
+                                    _cfg.smtp_email, _cfg.smtp_password,
+                                    c["email"], c["name"], _sid, _cfg.chatbot_public_url,
+                                )
+                            except Exception:
+                                logger.exception("Failed to notify contact %s", c["email"])
                     except Exception:
                         logger.exception("Failed to fetch staff contacts")
-            asyncio.create_task(_send_notification())
+            except Exception:
+                logger.exception("Failed to send notifications for session %s", request.session_id)
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
         return ChatResponse(reply=reply, session_id=request.session_id, timestamp=time.time())

@@ -225,7 +225,7 @@ async def get_unanswered_queries(
 @router.get("/ai-settings")
 async def get_ai_settings():
     """Return the current AI personality settings."""
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     from app.ai_settings import load_ai_settings
     try:
         _staff_store = _get_staff_store()
@@ -238,7 +238,7 @@ async def get_ai_settings():
 @router.put("/ai-settings")
 async def update_ai_settings(payload: dict):
     """Update AI personality settings and reload in the running app."""
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     from app.ai_settings import AiSettings, save_ai_settings
 
     name = (payload.get("name") or "").strip()
@@ -306,7 +306,7 @@ async def upload_image(request: Request):
 
         # Store image in DB under a unique key
         img_key = f"faq_image_{_uuid.uuid4().hex}"
-        from app.staff_routes import _get_staff_store
+        from app.staff_routes import _get_store as _get_staff_store
         try:
             _get_staff_store().update_settings({img_key: data_url})
         except Exception:
@@ -431,7 +431,7 @@ def _migrate_to_faqs(data: dict) -> dict:
 @router.get("/library-info")
 async def get_library_info():
     """Return the current library info contents (from DB or file), migrating old format if needed."""
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     try:
         db_val = _get_staff_store().get_setting("library_info_json")
         if db_val:
@@ -452,7 +452,7 @@ async def update_library_info(payload: dict):
             return JSONResponse(status_code=400, content={"error": f"FAQ item {i} must have 'label' and 'question'."})
     clean_payload = {"faqs": payload["faqs"]}
 
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     try:
         _get_staff_store().update_settings({"library_info_json": json.dumps(clean_payload, ensure_ascii=False)})
     except Exception:
@@ -1084,7 +1084,7 @@ _DEFAULT_HOURS: dict = {
 @router.get("/library-hours")
 async def get_library_hours():
     """Return the configured library hours (used to control librarian button availability)."""
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     try:
         _ss = _get_staff_store()
         raw = _ss.get_setting("library_hours_json")
@@ -1114,7 +1114,7 @@ async def update_library_hours(payload: dict):
 
     clean = {day: payload.get(day, []) for day in days}
 
-    from app.staff_routes import _get_staff_store
+    from app.staff_routes import _get_store as _get_staff_store
     try:
         _ss = _get_staff_store()
         _ss.update_settings({"library_hours_json": json.dumps(clean)})
