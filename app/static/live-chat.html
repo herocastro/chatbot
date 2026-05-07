@@ -309,13 +309,20 @@
     var text = replyInput.value.trim();
     if (!text || !liveChatId) return;
     replyInput.value = "";
+    // Show message instantly (optimistic UI) before server confirms
+    var now = Date.now() / 1000;
+    var div = document.createElement("div");
+    div.className = "msg msg-librarian";
+    var time = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    div.innerHTML = '<div class="msg-label" style="text-align:right">👩‍💼 ' + esc(myName) + ' · ' + time + '</div><div class="bubble">' + esc(text) + '</div>';
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
     try {
       await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Key": apiKey },
         body: JSON.stringify({ message: text, sender_name: myName })
       });
-      await loadMessages();
     } catch(e) {}
     replyInput.focus();
   }

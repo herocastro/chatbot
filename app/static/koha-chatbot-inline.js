@@ -885,6 +885,7 @@
   var handoffHandler = null;
   var lastPollTs = 0;
   var pollTimer = null;
+  var _joinedMsgShown = false; // guard against duplicate "joined" messages
 
   function startPolling() {
     if (pollTimer) return;
@@ -897,13 +898,14 @@
     btn.disabled = true;
     // Show cancel button while waiting
     showCancelButton();
-    pollTimer = setInterval(pollForMessages, 1000);
+    pollTimer = setInterval(pollForMessages, 2000);
   }
 
   function stopPolling(keepInputDisabled) {
     handoffActive = false;
     handoffHandler = null;
     lastPollTs = 0;
+    _joinedMsgShown = false;
     // Restore librarian button only if it was available before handoff started
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
@@ -974,7 +976,10 @@
           inp.disabled = false;
           inp.placeholder = "Type your message…";
           btn.disabled = false;
-          _origAddMsg("A librarian has joined the chat! 👋", "b");
+          if (!_joinedMsgShown) {
+            _joinedMsgShown = true;
+            _origAddMsg("A librarian has joined the chat! 👋", "b");
+          }
         }
         // Process new messages
         if (d.messages && d.messages.length > 0) {
@@ -1092,10 +1097,11 @@
       .then(function(d) {
         if (d.handoff_active) {
           lastPollTs = Date.now() / 1000;
-          // If a librarian already claimed, set handoffHandler so we don't
-          // show the "joined" message again on reload
+          // If a librarian already claimed, set handoffHandler and mark joined
+          // so we don't show the "joined" message again on reload
           if (d.handled_by) {
             handoffHandler = d.handled_by;
+            _joinedMsgShown = true;
           }
           startPolling();
           // If librarian already joined, re-enable input (startPolling disables it)
