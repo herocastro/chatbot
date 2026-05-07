@@ -848,24 +848,18 @@ async def poll_messages(session_id: str, since: float = 0):
             msgs = session_store.get_live_chat_messages(live_chat_id, since)
         else:
             # No active live chat — check if there's a recently-ended one
-            # so the client knows to show the rating UI
             ended_chat = session_store.get_recently_ended_live_chat(session_id)
             live_chat_id = ended_chat["id"] if ended_chat else None
             handled_by = ended_chat["staff_username"] if ended_chat else None
-            # live_chat_status = "ended" if we found a recently-ended chat,
-            # OR if the session's handoff_active flag was cleared (librarian ended it)
-            # but the ended_chat row is outside the window or on a different instance.
-            was_active = session_store.is_handoff_active(session_id)
+            # Only signal "ended" if we have a concrete ended row in the DB.
+            # Never infer "ended" from missing data — that's indistinguishable
+            # from a Vercel cold-start instance with an empty DB.
             if ended_chat:
-                live_chat_status = "ended"
-                handoff = False
-            elif not was_active:
-                # handoff_active = 0 means librarian ended it — tell patron
                 live_chat_status = "ended"
                 handoff = False
             else:
                 live_chat_status = None
-                handoff = was_active
+                handoff = session_store.is_handoff_active(session_id)
             msgs = session_store.get_new_messages_since(session_id, since)
 
         return {
