@@ -904,6 +904,7 @@
   var pollTimer = null;
   var _joinedMsgShown = false;
   var _returnToBotTimer = null;
+  var _seenMsgKeys = {}; // tracks timestamp|content of rendered messages to handle equal timestamps
 
   function startPolling() {
     if (pollTimer) return;
@@ -922,6 +923,7 @@
     handoffHandler = null;
     lastPollTs = 0;
     _joinedMsgShown = false;
+    _seenMsgKeys = {};
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
       libBtn.style.cursor = "pointer";
@@ -993,18 +995,25 @@
           }
         }
 
-        // New messages
+        // New messages — use a seen-set to handle equal timestamps without duplicates
         if (d.messages && d.messages.length > 0) {
           d.messages.forEach(function(m) {
-            if (m.timestamp <= lastPollTs) return;
+            if (m.timestamp < lastPollTs) return;
+            // For messages at exactly lastPollTs, skip ones we already rendered
+            if (m.timestamp === lastPollTs && _seenMsgKeys[m.timestamp + "|" + m.content]) return;
             if (m.role === "librarian") {
               _origAddMsg("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
-              // Skip system end-handoff messages — we show our own UI
               if (!m.content || m.content.indexOf("Back to help") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
               _origAddMsg(m.content, "b", m.timestamp);
             }
-            if (m.timestamp > lastPollTs) lastPollTs = m.timestamp;
+            _seenMsgKeys[m.timestamp + "|" + m.content] = true;
+            if (m.timestamp > lastPollTs) {
+              lastPollTs = m.timestamp;
+              // Clear old seen keys to avoid unbounded growth
+              _seenMsgKeys = {};
+              _seenMsgKeys[m.timestamp + "|" + m.content] = true;
+            }
           });
         }
 

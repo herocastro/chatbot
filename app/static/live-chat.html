@@ -239,7 +239,8 @@
     chatMessages.parentNode.insertBefore(card, chatMessages);
   }
 
-  var lastRenderedTs = 0; // track last rendered message timestamp
+  var lastRenderedTs = 0;
+  var _libSeenKeys = {}; // tracks timestamp|content to handle equal-timestamp messages
 
   async function loadMessages() {
     if (!liveChatId) return;
@@ -259,34 +260,31 @@
 
   function appendNewMessages(msgs) {
     var empty = chatMessages.querySelector(".empty-state");
-
-    // Filter to only messages newer than what we've already rendered
-    var newMsgs = msgs.filter(function(m) { return m.timestamp > lastRenderedTs; });
+    var newMsgs = msgs.filter(function(m) {
+      if (m.timestamp < lastRenderedTs) return false;
+      if (m.timestamp === lastRenderedTs && _libSeenKeys[m.timestamp + "|" + m.content]) return false;
+      return true;
+    });
     if (!newMsgs.length) return;
-
     if (empty) empty.remove();
-
     newMsgs.forEach(function(m) {
-      // If this is a librarian message, check if an optimistic version exists
-      // and replace it instead of appending a duplicate
       if (m.role === "librarian") {
         var optimistics = chatMessages.querySelectorAll(".msg-optimistic");
         var replaced = false;
         for (var i = 0; i < optimistics.length; i++) {
-          // Match by the raw text stored in data-optimistic-text (set in sendReply).
-          // This avoids false mismatches caused by esc() HTML-encoding special chars
-          // (e.g. "&" → "&amp;") which makes bubble.textContent !== m.content.
           if (optimistics[i].dataset.optimisticText === m.content) {
-            // Replace optimistic with confirmed DB version
             optimistics[i].classList.remove("msg-optimistic");
             replaced = true;
             break;
           }
         }
-        if (replaced) {
-          if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
-          return;
+        _libSeenKeys[m.timestamp + "|" + m.content] = true;
+        if (m.timestamp > lastRenderedTs) {
+          lastRenderedTs = m.timestamp;
+          _libSeenKeys = {};
+          _libSeenKeys[m.timestamp + "|" + m.content] = true;
         }
+        if (replaced) return;
       }
       var div = document.createElement("div");
       var cls = "msg ", label = "";
@@ -297,7 +295,12 @@
       div.className = cls;
       div.innerHTML = '<div class="msg-label">' + label + " · " + time + '</div><div class="bubble">' + esc(m.content) + '</div>';
       chatMessages.appendChild(div);
-      if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
+      _libSeenKeys[m.timestamp + "|" + m.content] = true;
+      if (m.timestamp > lastRenderedTs) {
+        lastRenderedTs = m.timestamp;
+        _libSeenKeys = {};
+        _libSeenKeys[m.timestamp + "|" + m.content] = true;
+      }
     });
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
