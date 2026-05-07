@@ -1146,14 +1146,45 @@
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.handoff_active) {
-          // Start from 0 — fetch all messages so nothing is missed on resume.
-          // _seenMsgKeys dedup prevents double-rendering of messages already
-          // in chatHistory.
           lastPollTs = 0;
           if (d.handled_by) {
             handoffHandler = d.handled_by;
             _joinedMsgShown = true;
           }
+
+          // Re-render the full conversation in correct timestamp order.
+          // Merge chatHistory entries (patron/system) with librarian messages from DB.
+          if (d.messages && d.messages.length > 0) {
+            // Build a combined list sorted by timestamp
+            var combined = [];
+            chatHistory.forEach(function(m) {
+              if (m.cls === "b" && m.text && m.text.indexOf("👩‍💼 Librarian:") === 0) return;
+              combined.push({ ts: m.ts || 0, render: function(entry) {
+                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null);
+              }, text: m.text, cls: m.cls, imgUrl: m.imgUrl, isHistory: true });
+            });
+            d.messages.forEach(function(m) {
+              var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
+              _seenMsgKeys[key] = true;
+              if (m.timestamp > lastPollTs) lastPollTs = m.timestamp;
+              if (m.role === "librarian") {
+                combined.push({ ts: m.timestamp || 0, content: m.content, isLibrarian: true });
+              }
+              // skip user/assistant — already in chatHistory
+            });
+            combined.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
+
+            msgs.innerHTML = "";
+            combined.forEach(function(entry) {
+              if (entry.isLibrarian) {
+                addMsgRaw("👩‍💼 Librarian: " + entry.content, "b", entry.ts);
+              } else {
+                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null);
+              }
+            });
+            scroll();
+          }
+
           startPolling();
           if (d.handled_by) {
             inp.disabled = false;
