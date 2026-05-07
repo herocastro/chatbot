@@ -405,10 +405,18 @@ async def chat(request: ChatRequest):
     session_mgr = session_manager or SessionManager()
     history = session_mgr.get_history(request.session_id)
 
+    # --- Ensure session store is available (handles cold-start where startup hasn't fired yet) ---
+    global session_store
+    if session_store is None:
+        try:
+            from app.admin_routes import _get_store
+            session_store = _get_store()
+            from app.admin_routes import set_session_store
+            set_session_store(session_store)
+        except Exception:
+            pass
+
     # --- Check if handoff is active (librarian takeover) ---
-    # Use get_active_live_chat as the primary signal — same as the poll endpoint.
-    # is_handoff_active() can return False on Vercel cold-start instances with empty
-    # sessions tables, causing patron messages to bypass the live chat route.
     _active_live_chat = session_store.get_active_live_chat(request.session_id) if session_store else None
     _handoff_active = _active_live_chat is not None or (
         session_store is not None and session_store.is_handoff_active(request.session_id)
@@ -849,6 +857,15 @@ async def librarian_available():
 @app.get("/api/poll/{session_id}")
 async def poll_messages(session_id: str, since: float = 0):
     """Patron polls for new messages (librarian replies) since a timestamp."""
+    global session_store
+    # Ensure store is available on cold-start
+    if session_store is None:
+        try:
+            from app.admin_routes import _get_store, set_session_store
+            session_store = _get_store()
+            set_session_store(session_store)
+        except Exception:
+            pass
     if session_store is None:
         return {"messages": [], "handoff_active": False, "handled_by": None,
                 "live_chat_id": None, "live_chat_status": None}

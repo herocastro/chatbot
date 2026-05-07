@@ -632,8 +632,9 @@
       b.addEventListener("click", function() {
         _patronType = b.getAttribute("data-value");
         var prompt = b.getAttribute("data-prompt");
-        // Show user's choice as a chat bubble
-        _origAddMsg(_patronType, "u");
+        // Show user's choice as a visual bubble only — don't save to chatHistory
+        // so it doesn't duplicate on page reload
+        addMsgRaw(_patronType, "u");
         showPatronDetailsStep(prompt);
       });
     });
@@ -669,8 +670,8 @@
       var val = detailInput.value.trim();
       if (!val) { detailInput.style.borderColor = "#e74c3c"; return; }
       _patronDetails = val;
-      // Show as user bubble
-      _origAddMsg(_patronDetails, "u");
+      // Show as visual bubble only — don't save to chatHistory to avoid duplicates on reload
+      addMsgRaw(_patronDetails, "u");
       // Remove form
       var f = document.getElementById("lc-patron-form");
       if (f) f.remove();
@@ -695,6 +696,9 @@
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
     if (!libBtnAvailable) return; // outside library hours
+    // Disable immediately to prevent double-click showing the form twice
+    libBtn.disabled = true;
+    libBtn.style.opacity = "0.45";
     showPatronTypeStep();
   });
 
