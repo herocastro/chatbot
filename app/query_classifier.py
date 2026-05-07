@@ -57,16 +57,24 @@ _GREETING_PATTERNS = {
     "good morning", "good afternoon", "good evening", "howdy", "hola",
     "thanks", "thank you", "ty", "thx", "ok", "okay", "got it", "bye", "goodbye",
     "see you", "see ya", "later", "alright", "cool", "great", "awesome",
+    "how are you", "how r you", "how are u", "what is up", "how's it going",
+    "hows it going", "how is it going", "how do you do",
 }
 
 # Greeting word stems — any word starting with these is treated as a greeting
 _GREETING_STEMS = ("hi", "hey", "hell", "hola", "howdy", "sup", "yo", "bye", "good")
+
+# Words that, when appearing in a short message alongside a name/filler, still mean greeting
+_GREETING_TRIGGER_WORDS = {"sup", "whats", "what's", "hey", "hi", "hello", "hiya", "heya",
+                            "howdy", "hows", "how's", "greetings", "salut", "ello"}
 
 
 def _is_greeting_word(word: str) -> bool:
     """Return True if a word looks like a greeting (exact match or common stem)."""
     w = word.lower().strip("!?.,")
     if w in _GREETING_PATTERNS:
+        return True
+    if w in _GREETING_TRIGGER_WORDS:
         return True
     for stem in _GREETING_STEMS:
         if w.startswith(stem) and len(w) <= len(stem) + 4:
@@ -102,16 +110,18 @@ def _quick_classify(message: str) -> str | None:
     if lower in FAQ_QUESTIONS or lower.rstrip("?") in FAQ_QUESTIONS:
         return "library_info"
 
-    # Very short messages (1-2 words, no library keywords) are conversational,
-    # not catalog searches — e.g. "no", "ok", "tf", "lol", "what?", "huh"
-    words = set(lower.replace("?", " ").replace("!", " ").replace(".", " ").split())
-    if len(words) <= 2 and not (words & _INFO_KEYWORDS) and not (words & _CATALOG_KEYWORDS):
-        # Check if it's a known greeting/ack first
+    # Very short messages (1-2 words, no library keywords) are conversational or greetings.
+    # 3-word messages only qualify if they contain a greeting trigger word.
+    words_list = lower.replace("?", " ").replace("!", " ").replace(".", " ").split()
+    words = set(words_list)
+    is_short = len(words_list) <= 2 or (len(words_list) == 3 and any(w in _GREETING_TRIGGER_WORDS for w in words_list))
+    if is_short and not (words & _INFO_KEYWORDS) and not (words & _CATALOG_KEYWORDS):
+        # Check if any word is a greeting trigger
+        if any(_is_greeting_word(w) for w in words_list):
+            return "greeting"
         if lower in _GREETING_PATTERNS or lower.rstrip("!?.") in _GREETING_PATTERNS:
             return "greeting"
-        if any(_is_greeting_word(w) for w in words):
-            return "greeting"
-        # Otherwise treat as conversational (needs LLM with history to make sense of it)
+        # Otherwise treat as conversational
         return "conversational"
 
     # Greetings (exact or near-exact match, or starts with a greeting word)

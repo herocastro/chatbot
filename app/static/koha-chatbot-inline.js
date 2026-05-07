@@ -613,12 +613,16 @@
     var lower = text.toLowerCase();
     var isSearch = /\b(find|search|look|book|books|author|title|catalog|isbn)\b/.test(lower);
     showTyping(isSearch ? "Searching…" : "Thinking…");
+    var chatAbort = new AbortController();
+    var chatTimeout = setTimeout(function() { chatAbort.abort(); }, 25000);
     fetch(CHATBOT_API + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, session_id: sid })
+      body: JSON.stringify({ message: text, session_id: sid }),
+      signal: chatAbort.signal
     })
     .then(function (r) {
+      clearTimeout(chatTimeout);
       if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || "Request failed"); });
       return r.json();
     })
@@ -686,7 +690,7 @@
       } else if (q.match(/email|contact/)) {
         addMsg("You can reach us at chslibrary@lorma.edu (CHS) or clilibrary@lorma.edu (CLI). 📧", "b");
       } else {
-        addMsg("I'm having trouble connecting right now 😅 Please try again in a moment, or contact library staff for assistance.", "e");
+        addMsg("I'm taking a bit longer than usual to respond 😅 Please send your message again — I'll be ready!", "e");
       }
     })
     .finally(function () {
