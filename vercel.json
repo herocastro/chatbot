@@ -11,12 +11,6 @@
   ],
   "headers": [
     {
-      "source": "/static/(.*\\.(js|css|html|ico|png|jpg|svg|woff2?))",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
-      ]
-    },
-    {
       "source": "/api/faqs",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
