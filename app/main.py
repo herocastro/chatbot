@@ -409,12 +409,12 @@ async def chat(request: ChatRequest):
     global session_store
     if session_store is None:
         try:
-            from app.admin_routes import _get_store
-            session_store = _get_store()
-            from app.admin_routes import set_session_store
-            set_session_store(session_store)
+            db_path = os.environ.get("SESSION_DB_PATH", "/tmp/sessions.db")
+            session_store = SessionStore(db_path=db_path)
+            from app.admin_routes import set_session_store as _set_ss
+            _set_ss(session_store)
         except Exception:
-            pass
+            logger.warning("Failed to init session store on-demand in /api/chat")
 
     # --- Check if handoff is active (librarian takeover) ---
     _active_live_chat = session_store.get_active_live_chat(request.session_id) if session_store else None
@@ -858,12 +858,12 @@ async def librarian_available():
 async def poll_messages(session_id: str, since: float = 0):
     """Patron polls for new messages (librarian replies) since a timestamp."""
     global session_store
-    # Ensure store is available on cold-start
     if session_store is None:
         try:
-            from app.admin_routes import _get_store, set_session_store
-            session_store = _get_store()
-            set_session_store(session_store)
+            db_path = os.environ.get("SESSION_DB_PATH", "/tmp/sessions.db")
+            session_store = SessionStore(db_path=db_path)
+            from app.admin_routes import set_session_store as _set_ss
+            _set_ss(session_store)
         except Exception:
             pass
     if session_store is None:
