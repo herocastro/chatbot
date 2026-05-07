@@ -579,19 +579,19 @@ class SessionStore:
             conn.close()
 
     def get_new_messages_since(self, session_id: str, since_ts: float) -> list[dict]:
-        """Return messages in a session newer than the given timestamp."""
+        """Return messages in a session newer than or equal to the given timestamp."""
         conn = self._get_connection()
         try:
             rows = conn.execute(
                 """
-                SELECT role, content, timestamp FROM messages
-                WHERE session_id = ? AND timestamp > ?
+                SELECT id, role, content, timestamp FROM messages
+                WHERE session_id = ? AND timestamp >= ?
                 ORDER BY timestamp ASC, id ASC
                 """,
                 (session_id, since_ts),
             ).fetchall()
             return [
-                {"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]}
+                {"id": r["id"], "role": r["role"], "content": r["content"], "timestamp": r["timestamp"]}
                 for r in rows
             ]
         finally:
@@ -943,16 +943,24 @@ class SessionStore:
             conn.close()
 
     def get_live_chat_messages(self, live_chat_id: str, since: float = 0) -> list[dict]:
-        """Return messages for a live chat session, optionally since a timestamp."""
+        """Return messages for a live chat session, optionally since a timestamp.
+
+        Uses ``timestamp >= since`` (inclusive) so that messages with the same
+        timestamp as the last-seen message are not silently dropped.  The caller
+        is responsible for deduplicating messages it has already rendered.
+        """
         conn = self._get_connection()
         try:
             rows = conn.execute(
-                """SELECT role, content, timestamp FROM live_chat_messages
-                   WHERE live_chat_id = ? AND timestamp > ?
+                """SELECT id, role, content, timestamp FROM live_chat_messages
+                   WHERE live_chat_id = ? AND timestamp >= ?
                    ORDER BY timestamp ASC, id ASC""",
                 (live_chat_id, since),
             ).fetchall()
-            return [{"role": r["role"], "content": r["content"], "timestamp": r["timestamp"]} for r in rows]
+            return [
+                {"id": r["id"], "role": r["role"], "content": r["content"], "timestamp": r["timestamp"]}
+                for r in rows
+            ]
         finally:
             conn.close()
 

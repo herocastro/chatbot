@@ -240,7 +240,7 @@
   }
 
   var lastRenderedTs = 0;
-  var _libSeenKeys = {}; // tracks timestamp|content to handle equal-timestamp messages
+  var _libSeenIds = new Set(); // tracks message IDs already rendered
 
   async function loadMessages() {
     if (!liveChatId) return;
@@ -261,13 +261,14 @@
   function appendNewMessages(msgs) {
     var empty = chatMessages.querySelector(".empty-state");
     var newMsgs = msgs.filter(function(m) {
-      if (m.timestamp < lastRenderedTs) return false;
-      if (m.timestamp === lastRenderedTs && _libSeenKeys[m.timestamp + "|" + m.content]) return false;
-      return true;
+      // Use id-based deduplication when available, fall back to timestamp|content
+      var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
+      return !_libSeenIds.has(key);
     });
     if (!newMsgs.length) return;
     if (empty) empty.remove();
     newMsgs.forEach(function(m) {
+      var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
       if (m.role === "librarian") {
         var optimistics = chatMessages.querySelectorAll(".msg-optimistic");
         var replaced = false;
@@ -278,13 +279,12 @@
             break;
           }
         }
-        _libSeenKeys[m.timestamp + "|" + m.content] = true;
-        if (m.timestamp > lastRenderedTs) {
-          lastRenderedTs = m.timestamp;
-          _libSeenKeys = {};
-          _libSeenKeys[m.timestamp + "|" + m.content] = true;
-        }
+        _libSeenIds.add(key);
+        if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
         if (replaced) return;
+      } else {
+        _libSeenIds.add(key);
+        if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
       }
       var div = document.createElement("div");
       var cls = "msg ", label = "";
@@ -295,12 +295,6 @@
       div.className = cls;
       div.innerHTML = '<div class="msg-label">' + label + " · " + time + '</div><div class="bubble">' + esc(m.content) + '</div>';
       chatMessages.appendChild(div);
-      _libSeenKeys[m.timestamp + "|" + m.content] = true;
-      if (m.timestamp > lastRenderedTs) {
-        lastRenderedTs = m.timestamp;
-        _libSeenKeys = {};
-        _libSeenKeys[m.timestamp + "|" + m.content] = true;
-      }
     });
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }

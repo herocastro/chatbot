@@ -426,10 +426,23 @@ async def chat(request: ChatRequest):
         _lc = _active_live_chat
         async def _persist_handoff():
             try:
-                live_chat = _lc or _store.get_active_live_chat(_sid)
+                live_chat = _lc
+                # Retry up to 3 times to handle race conditions / cold-start DB lag
+                for _attempt in range(3):
+                    if live_chat:
+                        break
+                    live_chat = _store.get_active_live_chat(_sid)
+                    if not live_chat:
+                        await asyncio.sleep(0.5)
                 if live_chat:
                     _store.save_live_chat_message(live_chat["id"], "user", _msg)
                 else:
+                    # Last resort: save to regular messages table so the message
+                    # is at least recorded, but log a warning.
+                    logger.warning(
+                        "Could not find active live chat for session %s — "
+                        "saving patron message to regular messages table", _sid
+                    )
                     _store.save_message(_sid, "user", _msg, intent="handoff")
             except Exception:
                 logger.exception("Failed to persist handoff message for session %s", _sid)

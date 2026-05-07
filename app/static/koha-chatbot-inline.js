@@ -995,24 +995,21 @@
           }
         }
 
-        // New messages — use a seen-set to handle equal timestamps without duplicates
+        // New messages — use id-based deduplication to avoid missing or duplicating messages
         if (d.messages && d.messages.length > 0) {
           d.messages.forEach(function(m) {
-            if (m.timestamp < lastPollTs) return;
-            // For messages at exactly lastPollTs, skip ones we already rendered
-            if (m.timestamp === lastPollTs && _seenMsgKeys[m.timestamp + "|" + m.content]) return;
+            // Use id-based deduplication when available, fall back to timestamp|content
+            var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
+            if (_seenMsgKeys[key]) return;
             if (m.role === "librarian") {
               _origAddMsg("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
               if (!m.content || m.content.indexOf("Back to help") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
               _origAddMsg(m.content, "b", m.timestamp);
             }
-            _seenMsgKeys[m.timestamp + "|" + m.content] = true;
+            _seenMsgKeys[key] = true;
             if (m.timestamp > lastPollTs) {
               lastPollTs = m.timestamp;
-              // Clear old seen keys to avoid unbounded growth
-              _seenMsgKeys = {};
-              _seenMsgKeys[m.timestamp + "|" + m.content] = true;
             }
           });
         }
