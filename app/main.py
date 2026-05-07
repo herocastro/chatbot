@@ -97,17 +97,18 @@ HANDOFF_ACTIVE_NOTE = (
 _CLEANUP_INTERVAL = 300
 
 
-async def _periodic_cleanup(mgr: SessionManager) -> None:
-    """Run session cleanup in an infinite loop, sleeping between runs."""
-    while True:
-        await asyncio.sleep(_CLEANUP_INTERVAL)
-        mgr.cleanup_expired()
-
-
 @app.on_event("startup")
 async def startup() -> None:
-    """Initialise application state on startup."""
+    """Initialise application state on startup.
+
+    DB-heavy work (schema init/migration) runs in a thread executor so it
+    doesn't block the async event loop while waiting on Turso HTTP round-trips.
+    """
     global settings, groq_client, session_manager, session_store, library_info, ai_settings
+    import asyncio
+    import json as _json
+
+    loop = asyncio.get_event_loop()
 
     try:
         settings = load_settings()
@@ -115,67 +116,62 @@ async def startup() -> None:
         logger.warning("Failed to load settings — using defaults")
         settings = None
 
+    # GroqClient instantiation is cheap now (openai imported lazily on first use)
     if settings:
-        groq_client = GroqClient(
-            base_url=settings.ollama_url,
-            model=settings.ollama_model,
-        )
+        groq_client = GroqClient(base_url=settings.ollama_url, model=settings.ollama_model)
     else:
-        # Settings failed to load — still initialize the LLM client from env vars directly
         groq_client = GroqClient(
             base_url=os.environ.get("OLLAMA_URL", "https://openrouter.ai/api/v1"),
             model=os.environ.get("OLLAMA_MODEL", "meta-llama/llama-3.2-3b-instruct:free"),
         )
 
     session_manager = SessionManager()
-    library_info = LibraryInfo()  # start empty; DB load below fills it
+    library_info = LibraryInfo()
 
-    # Initialise persistent session store for admin monitoring.
     db_path = os.environ.get("SESSION_DB_PATH", "/tmp/sessions.db")
+
+    # Run DB init in a thread so Turso HTTP calls don't block the event loop
+    def _init_stores():
+        ss = SessionStore(db_path=db_path)
+        sf = StaffStore(db_path=db_path)
+        return ss, sf
+
     try:
-        session_store = SessionStore(db_path=db_path)
+        _ss_inst, _sf_inst = await loop.run_in_executor(None, _init_stores)
+        session_store = _ss_inst
         set_session_store(session_store)
+        set_staff_store(_sf_inst)
     except Exception:
-        logger.warning("Failed to initialise session store at %s", db_path)
+        logger.warning("Failed to initialise stores at %s", db_path)
         session_store = None
 
-    # Initialise staff account and settings store.
-    try:
-        staff_store_instance = StaffStore(db_path=db_path)
-        set_staff_store(staff_store_instance)
-    except Exception:
-        logger.warning("Failed to initialise settings store")
-
-    # Load library info from database (single source of truth)
-    try:
+    # Load library info and AI settings from DB (also in executor)
+    def _load_config():
         from app.staff_routes import staff_store as _ss
-        if _ss is not None:
-            db_val = _ss.get_setting("library_info_json")
-            if db_val:
-                import json as _json
-                library_info = LibraryInfo(**_json.loads(db_val))
-                logger.info("Loaded library info from database (%d FAQs)", len(library_info.faqs))
-            else:
-                logger.info("No library info in database yet — configure via admin panel")
-    except Exception:
-        logger.warning("Failed to load library info from database")
+        if _ss is None:
+            return None, None
+        lib_json = _ss.get_setting("library_info_json")
+        ai_json = _ss.get_setting("ai_settings_json")
+        return lib_json, ai_json
 
-    # Load AI settings from database
     try:
-        from app.staff_routes import staff_store as _ss2
-        if _ss2 is not None:
+        lib_json, ai_json = await loop.run_in_executor(None, _load_config)
+        if lib_json:
+            library_info = LibraryInfo(**_json.loads(lib_json))
+            logger.info("Loaded library info (%d FAQs)", len(library_info.faqs))
+        if ai_json or True:  # always load AI settings (uses defaults if not set)
+            from app.staff_routes import staff_store as _ss2
             ai_settings = load_ai_settings(_ss2)
             import app.groq_client as _gc
             _gc.SYSTEM_PROMPT = ai_settings.build_system_prompt()
             logger.info("Loaded AI settings: name=%s", ai_settings.name)
     except Exception:
-        logger.info("No AI settings in database, using defaults")
+        logger.warning("Failed to load config from database")
 
-    # Sync FAQ questions into classifier for fast intent matching
     _sync_faq_questions()
-
-    # Background task that purges expired sessions every 5 minutes.
-    asyncio.create_task(_periodic_cleanup(session_manager))
+    # Note: _periodic_cleanup background task removed — Vercel serverless instances
+    # are killed after each request, so the task never runs. Use a Vercel Cron Job
+    # for periodic cleanup if needed.
 
 
 @app.get("/debug/koha-test")

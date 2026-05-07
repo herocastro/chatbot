@@ -28,6 +28,10 @@ from app.session_manager import SESSION_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
+# Bump this when the schema changes. _migrate_db() checks this value against
+# what's stored in the DB and skips all PRAGMA introspection if already current.
+_SCHEMA_VERSION = 7
+
 _DEFAULT_DB_PATH = "/tmp/sessions.db"
 
 _ADJECTIVES = [
@@ -159,9 +163,24 @@ class SessionStore:
         self._migrate_db()
 
     def _migrate_db(self) -> None:
-        """Add columns introduced after the initial schema."""
+        """Add columns introduced after the initial schema.
+
+        Checks a schema_version key first — if it matches _SCHEMA_VERSION,
+        all migrations are already applied and we skip the expensive PRAGMA
+        introspection round-trips to Turso.
+        """
         conn = self._get_connection()
         try:
+            # Fast path: check schema version first (single cheap query)
+            try:
+                row = conn.execute(
+                    "SELECT value FROM schema_meta WHERE key = 'schema_version'"
+                ).fetchone()
+                if row and int(row["value"]) >= _SCHEMA_VERSION:
+                    return  # already up to date — skip all migrations
+            except Exception:
+                pass  # schema_meta table doesn't exist yet — run migrations
+
             # Check if 'intent' column exists on messages table.
             cols = [
                 row["name"]
@@ -318,6 +337,20 @@ class SessionStore:
             if "patron_info" not in sess_cols2:
                 conn.execute("ALTER TABLE sessions ADD COLUMN patron_info TEXT DEFAULT NULL")
                 conn.commit()
+
+            # Stamp the schema version so future cold starts skip all of the above
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS schema_meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+            """)
+            conn.execute(
+                "INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (str(_SCHEMA_VERSION),),
+            )
+            conn.commit()
         finally:
             conn.close()
 

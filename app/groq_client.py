@@ -2,7 +2,8 @@
 
 import logging
 
-from openai import OpenAI, APIError, APITimeoutError, NotFoundError, RateLimitError
+# openai is imported lazily inside GroqClient.__init__ and _send() to avoid
+# paying its ~200ms import cost on every cold start before the LLM is needed.
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ class GroqClient:
         base_url: str = DEFAULT_OLLAMA_URL,
     ) -> None:
         import os
+        from openai import OpenAI
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -95,8 +97,8 @@ class GroqClient:
 
     def _send(self, messages: list[dict]) -> str:
         """Send messages, automatically falling back through FALLBACK_MODELS on rate limit."""
-        # Build the model chain: primary first, then fallbacks (excluding primary if already listed)
         import os
+        from openai import APIError, APITimeoutError, NotFoundError, RateLimitError
         primary = self.model
         chain = [primary] + [m for m in FALLBACK_MODELS if m != primary]
 
