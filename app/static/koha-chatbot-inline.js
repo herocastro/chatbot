@@ -183,27 +183,43 @@
       return '<button class="lc-faq" data-q="' + f.question.replace(/"/g, "&quot;") + '">' + f.label + '</button>';
     }).join("");
   }
+  var _FAQ_FALLBACK = [
+    { label: "&#128336; Library Hours", question: "What are the library hours?" },
+    { label: "&#128172; LIBVAS", question: "What is LIBVAS?" },
+    { label: "&#128196; LIBRS", question: "What is LIBRS?" },
+    { label: "&#128187; LIBRAS", question: "What is LIBRAS?" },
+    { label: "&#128424; LibPrintS", question: "How does LibPrintS work?" }
+  ];
+
   function loadAndRenderFaqs(container) {
-    // Always fetch fresh — no caching so admin changes appear immediately
-    fetch(CHATBOT_API + "/api/faqs?t=" + Date.now())
-      .then(function(r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      })
-      .then(function(d) {
-        container.innerHTML = buildFaqHtml(d.faqs || []);
-      })
-      .catch(function(err) {
-        console.warn("[LLORA] FAQ fetch failed:", err);
-        // Fallback only on network/server error
-        container.innerHTML = buildFaqHtml([
-          { label: "&#128336; Library Hours", question: "What are the library hours?" },
-          { label: "&#128172; LIBVAS", question: "What is LIBVAS?" },
-          { label: "&#128196; LIBRS", question: "What is LIBRS?" },
-          { label: "&#128187; LIBRAS", question: "What is LIBRAS?" },
-          { label: "&#128424; LibPrintS", question: "How does LibPrintS work?" }
-        ]);
-      });
+    // Retry up to 3 times to handle Vercel cold-start empty responses
+    var attempts = 0;
+    function tryFetch() {
+      fetch(CHATBOT_API + "/api/faqs?t=" + Date.now())
+        .then(function(r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function(d) {
+          var faqs = d.faqs || [];
+          if (faqs.length === 0 && attempts < 2) {
+            // Empty response — may be cold-start, retry after 1.5s
+            attempts++;
+            setTimeout(tryFetch, 1500);
+            return;
+          }
+          container.innerHTML = buildFaqHtml(faqs.length > 0 ? faqs : _FAQ_FALLBACK);
+        })
+        .catch(function() {
+          if (attempts < 2) {
+            attempts++;
+            setTimeout(tryFetch, 1500);
+          } else {
+            container.innerHTML = buildFaqHtml(_FAQ_FALLBACK);
+          }
+        });
+    }
+    tryFetch();
   }
 
   // Load FAQs into the initial welcome screen
@@ -244,7 +260,9 @@
           if (!wEl) return; // chat already started, don't overwrite
           if (!avail.available) {
             wEl.textContent = AFTER_HOURS_MESSAGE;
-            // FAQ buttons stay visible — patron can still search books and ask library info
+            // Hide FAQ buttons during after-hours
+            var fqEl = msgs.querySelector(".lc-faqs");
+            if (fqEl) fqEl.style.display = "none";
           } else {
             wEl.textContent = welcome;
           }
@@ -554,10 +572,11 @@
     fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        // Don't override state if handoff is already active
-        if (!handoffActive) {
+        // Only update state if we got a valid response with an explicit available field
+        if (typeof d.available === "boolean" && !handoffActive) {
           setLibrarianButtonState(d.available, d.reason);
         }
+        // If d.available is undefined (cold-start empty response), leave button as-is
       })
       .catch(function() {
         // On error, leave button as-is (fail open)
@@ -738,7 +757,8 @@
         if (!wEl) return;
         if (!avail.available) {
           wEl.textContent = AFTER_HOURS_MESSAGE;
-          // FAQ buttons stay visible — patron can still search books and ask library info
+          var fqEl = msgs.querySelector(".lc-faqs");
+          if (fqEl) fqEl.style.display = "none";
         }
       })
       .catch(function() {});
