@@ -886,6 +886,8 @@
   var lastPollTs = 0;
   var pollTimer = null;
   var _joinedMsgShown = false; // guard against duplicate "joined" messages
+  var _handoffEndedCount = 0;  // require multiple consecutive false responses before ending
+  var HANDOFF_END_THRESHOLD = 3; // must get handoff_active=false 3 times in a row
 
   function startPolling() {
     if (pollTimer) return;
@@ -907,6 +909,7 @@
     lastPollTs = 0;
     _joinedMsgShown = false;
     ratingShown = false;
+    _handoffEndedCount = 0;
     // Restore librarian button only if it was available before handoff started
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
@@ -1001,12 +1004,22 @@
         }
         // Then check if handoff just ended — show rating AFTER messages
         // Only trigger end-of-chat if a librarian actually joined (handoffHandler set)
+        // AND we get consistent false responses (guards against Vercel cold-start false negatives)
         if (!d.handoff_active && handoffActive && handoffHandler) {
-          stopPolling(true); // keep input disabled until rating is submitted
-          showHandoffRating();
+          _handoffEndedCount++;
+          if (_handoffEndedCount >= HANDOFF_END_THRESHOLD) {
+            stopPolling(true); // keep input disabled until rating is submitted
+            showHandoffRating();
+          }
         } else if (!d.handoff_active && handoffActive && !handoffHandler) {
           // Handoff ended before any librarian joined (cancelled/expired) — just stop quietly
-          stopPolling();
+          _handoffEndedCount++;
+          if (_handoffEndedCount >= HANDOFF_END_THRESHOLD) {
+            stopPolling();
+          }
+        } else {
+          // handoff is active — reset the counter
+          _handoffEndedCount = 0;
         }
         // Check if librarian is typing
         if (handoffActive && handoffHandler) {

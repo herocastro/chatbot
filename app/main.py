@@ -836,7 +836,13 @@ async def poll_messages(session_id: str, since: float = 0):
         return {"messages": [], "handoff_active": False, "handled_by": None, "live_chat_id": None}
     try:
         handoff = session_store.is_handoff_active(session_id)
-        live_chat = session_store.get_active_live_chat(session_id) if handoff else None
+        # Always check for active live chat regardless of handoff flag —
+        # on Vercel serverless, a cold-start instance may have an empty DB
+        # and return handoff_active=False even when a live chat is running.
+        live_chat = session_store.get_active_live_chat(session_id)
+        if live_chat and not handoff:
+            # Live chat exists but handoff flag is missing (cold-start DB) — treat as active
+            handoff = True
         live_chat_id = live_chat["id"] if live_chat else None
         handled_by = live_chat["staff_username"] if live_chat else None
 
