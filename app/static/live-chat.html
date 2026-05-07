@@ -84,28 +84,36 @@
 
   var params = new URLSearchParams(window.location.search);
   sessionId = params.get("session") || "";
-  // Also check for name in URL (from email link)
+
+  // Restore name from sessionStorage so reload doesn't ask again
+  var STORE_KEY = "lc_librarian_name";
+  var storedName = sessionStorage.getItem(STORE_KEY) || "";
+  // Also accept name from URL param (email link)
   var urlName = params.get("name") || "";
-  if (urlName) nameInput.value = urlName;
+  var initialName = urlName || storedName;
+  if (initialName) nameInput.value = initialName;
 
   joinBtn.addEventListener("click", startChat);
   nameInput.addEventListener("keydown", function(e) { if (e.key === "Enter") startChat(); });
 
-  // If name is already in URL, auto-join
-  if (urlName) startChat();
+  // Auto-join if name is already known
+  if (initialName) startChat();
 
   async function startChat() {
     myName = nameInput.value.trim();
     if (!myName) { nameInput.style.borderColor = "#e74c3c"; nameInput.focus(); return; }
 
+    // Persist name so reload doesn't ask again
+    sessionStorage.setItem(STORE_KEY, myName);
+
     nameView.classList.add("hidden");
     chatView.classList.remove("hidden");
     chatView.style.display = "flex";
 
-    // Clean URL
+    // Clean URL — keep session param but drop name (it's now in sessionStorage)
     if (window.history.replaceState) {
       var clean = window.location.pathname;
-      if (sessionId) clean += "?session=" + sessionId;
+      if (sessionId) clean += "?session=" + encodeURIComponent(sessionId);
       window.history.replaceState({}, "", clean);
     }
 
@@ -240,7 +248,7 @@
   }
 
   var lastRenderedTs = 0;
-  var _libSeenIds = new Set(); // tracks message IDs already rendered
+  var _libSeenIds = new Set(); // tracks message IDs/keys already rendered
 
   async function loadMessages() {
     if (!liveChatId) return;
@@ -261,7 +269,6 @@
   function appendNewMessages(msgs) {
     var empty = chatMessages.querySelector(".empty-state");
     var newMsgs = msgs.filter(function(m) {
-      // Use id-based deduplication when available, fall back to timestamp|content
       var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
       return !_libSeenIds.has(key);
     });
@@ -269,25 +276,23 @@
     if (empty) empty.remove();
     newMsgs.forEach(function(m) {
       var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
+      _libSeenIds.add(key);
+      if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
+
       if (m.role === "librarian") {
+        // Try to replace an optimistic bubble with the confirmed DB version
         var optimistics = chatMessages.querySelectorAll(".msg-optimistic");
-        var replaced = false;
         for (var i = 0; i < optimistics.length; i++) {
           if (optimistics[i].dataset.optimisticText === m.content) {
             optimistics[i].classList.remove("msg-optimistic");
-            replaced = true;
-            break;
+            return; // optimistic bubble stays, no duplicate
           }
         }
-        _libSeenIds.add(key);
-        if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
-        if (replaced) return;
-      } else {
-        _libSeenIds.add(key);
-        if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
       }
+
       var div = document.createElement("div");
-      var cls = "msg ", label = "";
+      var cls = "msg ";
+      var label = "";
       if (m.role === "user") { cls += "msg-user"; label = "👤 Patron"; }
       else if (m.role === "librarian") { cls += "msg-librarian"; label = "👩‍💼 Librarian"; }
       else { cls += "msg-assistant"; label = "🤖 Bot"; }

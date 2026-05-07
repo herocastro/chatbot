@@ -1108,7 +1108,9 @@
       handoffHandler = null;
       returnToBot._done = false;
       ratingShown = false;
-      lastPollTs = Date.now() / 1000;
+      // Start from 0 so we don't miss librarian messages sent in the first
+      // poll interval. The _seenMsgKeys dedup prevents double-rendering.
+      lastPollTs = 0;
       startPolling();
     }
   };
@@ -1120,7 +1122,10 @@
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.handoff_active) {
-          lastPollTs = Date.now() / 1000;
+          // Start from 0 — fetch all messages so nothing is missed on resume.
+          // _seenMsgKeys dedup prevents double-rendering of messages already
+          // in chatHistory.
+          lastPollTs = 0;
           if (d.handled_by) {
             handoffHandler = d.handled_by;
             _joinedMsgShown = true;
