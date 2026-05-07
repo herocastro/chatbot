@@ -727,27 +727,66 @@ class SessionStore:
         finally:
             conn.close()
 
-    def claim_live_chat(self, live_chat_id: str, username: str) -> dict:
-        """Claim a live chat session. Returns ok/error dict."""
+    def get_recently_ended_live_chat(self, parent_session_id: str, within_seconds: int = 30) -> dict | None:
+        """Return the most recently ended live chat for a session if it ended within the last N seconds.
+
+        Used by the poll endpoint so the patron widget can detect a genuine end-of-chat
+        (as opposed to a cold-start false negative).
+        """
         conn = self._get_connection()
         try:
+            cutoff = time.time() - within_seconds
             row = conn.execute(
-                "SELECT staff_username, status FROM live_chat_sessions WHERE id = ?",
-                (live_chat_id,),
+                """SELECT id, parent_session_id, staff_username, status, created_at, ended_at
+                   FROM live_chat_sessions
+                   WHERE parent_session_id = ? AND status = 'ended' AND ended_at >= ?
+                   ORDER BY ended_at DESC LIMIT 1""",
+                (parent_session_id, cutoff),
             ).fetchone()
             if not row:
-                return {"ok": False, "error": "Live chat not found"}
-            if row["status"] == "ended":
-                return {"ok": False, "error": "Live chat already ended"}
-            if row["staff_username"] and row["staff_username"] != username:
-                return {"ok": False, "claimed_by": row["staff_username"]}
-            conn.execute(
+                return None
+            return {
+                "id": row["id"],
+                "parent_session_id": row["parent_session_id"],
+                "staff_username": row["staff_username"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "ended_at": row["ended_at"],
+            }
+        except Exception:
+            return None
+        finally:
+            conn.close()
+
+    def claim_live_chat(self, live_chat_id: str, username: str) -> dict:
+        """Claim a live chat session atomically. Returns ok/error dict."""
+        conn = self._get_connection()
+        try:
+            # Atomic claim: only succeeds if staff_username is still NULL
+            cur = conn.execute(
                 """UPDATE live_chat_sessions
                    SET staff_username = ?, status = 'active', claimed_at = ?
-                   WHERE id = ?""",
+                   WHERE id = ? AND staff_username IS NULL AND status = 'waiting'""",
                 (username, time.time(), live_chat_id),
             )
-            # Also update the parent session's handoff_claimed_by for backward compat
+            if cur.rowcount == 0:
+                # Either already claimed or ended — check which
+                row = conn.execute(
+                    "SELECT staff_username, status FROM live_chat_sessions WHERE id = ?",
+                    (live_chat_id,),
+                ).fetchone()
+                if not row:
+                    return {"ok": False, "error": "Live chat not found"}
+                if row["status"] == "ended":
+                    return {"ok": False, "error": "Live chat already ended"}
+                if row["staff_username"] and row["staff_username"] != username:
+                    return {"ok": False, "claimed_by": row["staff_username"]}
+                # Same librarian re-claiming — allow it
+                conn.execute(
+                    "UPDATE live_chat_sessions SET status = 'active', claimed_at = ? WHERE id = ?",
+                    (time.time(), live_chat_id),
+                )
+            # Update parent session's handoff_claimed_by for backward compat
             parent = conn.execute(
                 "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
                 (live_chat_id,),

@@ -833,23 +833,27 @@ async def librarian_available():
 async def poll_messages(session_id: str, since: float = 0):
     """Patron polls for new messages (librarian replies) since a timestamp."""
     if session_store is None:
-        return {"messages": [], "handoff_active": False, "handled_by": None, "live_chat_id": None}
+        return {"messages": [], "handoff_active": False, "handled_by": None,
+                "live_chat_id": None, "live_chat_status": None}
     try:
-        handoff = session_store.is_handoff_active(session_id)
-        # Always check for active live chat regardless of handoff flag —
-        # on Vercel serverless, a cold-start instance may have an empty DB
-        # and return handoff_active=False even when a live chat is running.
+        # Use get_active_live_chat as the single source of truth.
+        # is_handoff_active() already checks for active live chats internally,
+        # so we query the live chat directly and derive handoff_active from it.
         live_chat = session_store.get_active_live_chat(session_id)
-        if live_chat and not handoff:
-            # Live chat exists but handoff flag is missing (cold-start DB) — treat as active
+        if live_chat:
+            live_chat_id = live_chat["id"]
+            handled_by = live_chat["staff_username"]
+            live_chat_status = live_chat["status"]   # "waiting" | "active"
             handoff = True
-        live_chat_id = live_chat["id"] if live_chat else None
-        handled_by = live_chat["staff_username"] if live_chat else None
-
-        # Get messages from the live chat session if it exists
-        if live_chat_id:
             msgs = session_store.get_live_chat_messages(live_chat_id, since)
         else:
+            # No active live chat — check if there's a recently-ended one
+            # so the client knows to show the rating UI
+            ended_chat = session_store.get_recently_ended_live_chat(session_id)
+            live_chat_id = ended_chat["id"] if ended_chat else None
+            handled_by = ended_chat["staff_username"] if ended_chat else None
+            live_chat_status = "ended" if ended_chat else None
+            handoff = session_store.is_handoff_active(session_id)
             msgs = session_store.get_new_messages_since(session_id, since)
 
         return {
@@ -857,10 +861,12 @@ async def poll_messages(session_id: str, since: float = 0):
             "handoff_active": handoff,
             "handled_by": handled_by,
             "live_chat_id": live_chat_id,
+            "live_chat_status": live_chat_status,
         }
     except Exception:
         logger.exception("Failed to poll messages for session %s", session_id)
-        return {"messages": [], "handoff_active": False, "handled_by": None, "live_chat_id": None}
+        return {"messages": [], "handoff_active": False, "handled_by": None,
+                "live_chat_id": None, "live_chat_status": None}
 
 
 # Serve admin dashboard HTML at /admin/.

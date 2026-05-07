@@ -885,20 +885,17 @@
   var handoffHandler = null;
   var lastPollTs = 0;
   var pollTimer = null;
-  var _joinedMsgShown = false; // guard against duplicate "joined" messages
-  var _handoffEndedCount = 0;  // require multiple consecutive false responses before ending
-  var HANDOFF_END_THRESHOLD = 3; // must get handoff_active=false 3 times in a row
+  var _joinedMsgShown = false;
+  var _returnToBotTimer = null;
 
   function startPolling() {
     if (pollTimer) return;
     handoffActive = true;
     libBtn.style.opacity = "0.5";
     libBtn.style.cursor = "default";
-    // Disable input while waiting for librarian
     inp.disabled = true;
     inp.placeholder = "Waiting for a librarian…";
     btn.disabled = true;
-    // Show cancel button while waiting
     showCancelButton();
     pollTimer = setInterval(pollForMessages, 2000);
   }
@@ -908,15 +905,11 @@
     handoffHandler = null;
     lastPollTs = 0;
     _joinedMsgShown = false;
-    ratingShown = false;
-    _handoffEndedCount = 0;
-    // Restore librarian button only if it was available before handoff started
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
       libBtn.style.cursor = "pointer";
       libBtn.disabled = false;
     }
-    // Only re-enable input if not showing the rating survey
     if (!keepInputDisabled) {
       inp.disabled = false;
       inp.placeholder = "Type your message…";
@@ -924,9 +917,7 @@
     }
     removeCancelButton();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    // Restart inactivity timer now that handoff is over
     resetInactivityTimer();
-    // Re-check librarian availability after handoff ends
     checkLibrarianAvailability();
   }
 
@@ -962,8 +953,7 @@
           stopPolling();
           _origAddMsg("Librarian request cancelled. Back to help! 👋 What else can I do for you?", "b");
         } else if (d.error) {
-          // Staff already claimed — remove cancel button, keep polling
-          removeCancelButton();
+          removeCancelButton(); // Staff already claimed — keep polling
         }
       })
       .catch(function() {});
@@ -973,10 +963,10 @@
     fetch(CHATBOT_API + "/api/poll/" + encodeURIComponent(sid) + "?since=" + lastPollTs)
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        // Librarian joined
         if (d.handled_by && d.handled_by !== handoffHandler) {
           handoffHandler = d.handled_by;
           removeCancelButton();
-          // Re-enable input now that a librarian is here
           inp.disabled = false;
           inp.placeholder = "Type your message…";
           btn.disabled = false;
@@ -985,43 +975,34 @@
             _origAddMsg("A librarian has joined the chat! 👋", "b");
           }
         }
-        // Process new messages
+
+        // New messages
         if (d.messages && d.messages.length > 0) {
           d.messages.forEach(function(m) {
             if (m.timestamp <= lastPollTs) return;
             if (m.role === "librarian") {
               _origAddMsg("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
-              // Skip end-handoff messages — we show our own rating UI
-              if (m.content && (m.content.indexOf("Back to help") !== -1 || m.content.indexOf("ended the chat") !== -1)) {
-                // don't display
-              } else {
-                _origAddMsg(m.content, "b", m.timestamp);
-              }
+              // Skip system end-handoff messages — we show our own UI
+              if (!m.content || m.content.indexOf("Back to help") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
+              _origAddMsg(m.content, "b", m.timestamp);
             }
             if (m.timestamp > lastPollTs) lastPollTs = m.timestamp;
           });
         }
-        // Then check if handoff just ended — show rating AFTER messages
-        // Only trigger end-of-chat if a librarian actually joined (handoffHandler set)
-        // AND we get consistent false responses (guards against Vercel cold-start false negatives)
-        if (!d.handoff_active && handoffActive && handoffHandler) {
-          _handoffEndedCount++;
-          if (_handoffEndedCount >= HANDOFF_END_THRESHOLD) {
-            stopPolling(true); // keep input disabled until rating is submitted
-            showHandoffRating();
-          }
-        } else if (!d.handoff_active && handoffActive && !handoffHandler) {
-          // Handoff ended before any librarian joined (cancelled/expired) — just stop quietly
-          _handoffEndedCount++;
-          if (_handoffEndedCount >= HANDOFF_END_THRESHOLD) {
-            stopPolling();
-          }
-        } else {
-          // handoff is active — reset the counter
-          _handoffEndedCount = 0;
+
+        // Chat ended — use live_chat_status as the definitive signal
+        // This is immune to cold-start false negatives because it checks
+        // the actual live_chat_sessions.status column, not the handoff flag
+        if (d.live_chat_status === "ended" && handoffActive && handoffHandler) {
+          stopPolling(true);
+          showHandoffRating();
+        } else if (!d.handoff_active && !d.live_chat_status && handoffActive && !handoffHandler) {
+          // No live chat at all and no librarian joined — cancelled or expired
+          stopPolling();
         }
-        // Check if librarian is typing
+
+        // Librarian typing indicator
         if (handoffActive && handoffHandler) {
           fetch(CHATBOT_API + "/api/typing/" + encodeURIComponent(sid))
             .then(function(r) { return r.json(); })
@@ -1047,9 +1028,7 @@
   function showHandoffRating() {
     if (ratingShown) return;
     ratingShown = true;
-    // Show "chat ended" message first
     _origAddMsg("The librarian has ended the chat. 👋", "b");
-    // Then show rating survey
     var rateDiv = document.createElement("div");
     rateDiv.className = "lc-m b";
     rateDiv.style.cssText = "text-align:center;max-width:95%;padding:14px 18px;white-space:normal";
@@ -1073,19 +1052,20 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: sid, rating: rating })
         }).catch(function() {});
-        // Return patron to bot chat after rating
         returnToBot();
       });
     });
-    // Re-enable chat after a short delay even if patron skips rating
-    setTimeout(returnToBot, 8000);
+    // Auto-return after 10s if patron skips rating
+    if (_returnToBotTimer) clearTimeout(_returnToBotTimer);
+    _returnToBotTimer = setTimeout(returnToBot, 10000);
   }
 
   function returnToBot() {
-    // Guard: only run once using a dedicated flag
     if (returnToBot._done) return;
     returnToBot._done = true;
-    _origAddMsg("Back to help! \uD83D\uDC4B What else can I do for you?", "b");
+    if (_returnToBotTimer) { clearTimeout(_returnToBotTimer); _returnToBotTimer = null; }
+    ratingShown = false;
+    _origAddMsg("Back to help! 👋 What else can I do for you?", "b");
     inp.disabled = false;
     inp.placeholder = "Ask me about the library...";
     btn.disabled = !inp.value.trim();
@@ -1099,31 +1079,27 @@
   addMsg = function(t, c, ts, imgUrl) {
     _origAddMsg(t, c, ts, imgUrl || null);
     if (c === "b" && t && t.indexOf("notified a librarian") !== -1) {
-      // Fresh handoff request — reset handler, flag, and start polling
       handoffHandler = null;
       returnToBot._done = false;
+      ratingShown = false;
       lastPollTs = Date.now() / 1000;
       startPolling();
     }
   };
 
-  // On load, check if there's an active handoff we should resume polling for
+  // On load, resume polling if handoff is still active
   (function resumeHandoffIfActive() {
     if (!sid) return;
     fetch(CHATBOT_API + "/api/poll/" + encodeURIComponent(sid) + "?since=0")
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        // Only resume if handoff is genuinely still active on the server
         if (d.handoff_active) {
           lastPollTs = Date.now() / 1000;
-          // If a librarian already claimed, set handoffHandler and mark joined
-          // so we don't show the "joined" message again on reload
           if (d.handled_by) {
             handoffHandler = d.handled_by;
             _joinedMsgShown = true;
           }
           startPolling();
-          // If librarian already joined, re-enable input (startPolling disables it)
           if (d.handled_by) {
             inp.disabled = false;
             inp.placeholder = "Type your message…";
@@ -1131,7 +1107,7 @@
             removeCancelButton();
           }
         }
-        // If handoff_active is false, do nothing — don't trigger any end-of-chat UI
+        // If not active, do nothing — no spurious end-of-chat UI
       })
       .catch(function() {});
   })();

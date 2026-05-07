@@ -81,8 +81,6 @@
   var sessionId = "";
   var liveChatId = "";
   var pollTimer = null;
-  var _endedCount = 0; // require multiple consecutive "ended" before stopping
-  var END_THRESHOLD = 3;
 
   var params = new URLSearchParams(window.location.search);
   sessionId = params.get("session") || "";
@@ -241,15 +239,12 @@
       var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/messages", { headers: { "X-Admin-Key": apiKey } });
       var data = await resp.json();
       renderMessages(data.messages || []);
+      // Only stop polling when the server confirms status = 'ended'
+      // The endpoint defaults to 'active' on cold-start, so this is reliable
       if (data.status === "ended") {
-        _endedCount++;
-        if (_endedCount >= END_THRESHOLD) {
-          chatStatus.textContent = "Chat has ended";
-          document.getElementById("input-bar").style.display = "none";
-          stopPoll();
-        }
-      } else {
-        _endedCount = 0; // reset on any active response
+        chatStatus.textContent = "Chat has ended";
+        document.getElementById("input-bar").style.display = "none";
+        stopPoll();
       }
     } catch(e) {}
   }
