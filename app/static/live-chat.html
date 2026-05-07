@@ -200,6 +200,7 @@
       }
     } catch(e) { chatStatus.textContent = "Connected"; }
     await loadPatronInfo();
+    lastRenderedTs = 0;
     await loadMessages();
     startPoll();
     replyInput.focus();
@@ -233,14 +234,14 @@
     chatMessages.parentNode.insertBefore(card, chatMessages);
   }
 
+  var lastRenderedTs = 0; // track last rendered message timestamp
+
   async function loadMessages() {
     if (!liveChatId) return;
     try {
       var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/messages", { headers: { "X-Admin-Key": apiKey } });
       var data = await resp.json();
-      renderMessages(data.messages || []);
-      // Only stop polling when the server confirms status = 'ended'
-      // The endpoint defaults to 'active' on cold-start, so this is reliable
+      appendNewMessages(data.messages || []);
       if (data.status === "ended") {
         chatStatus.textContent = "Chat has ended";
         document.getElementById("input-bar").style.display = "none";
@@ -249,19 +250,31 @@
     } catch(e) {}
   }
 
-  function renderMessages(msgs) {
-    chatMessages.innerHTML = "";
-    if (!msgs.length) { chatMessages.innerHTML = '<div class="empty-state">Waiting for patron messages…</div>'; return; }
-    msgs.forEach(function(m) {
+  function appendNewMessages(msgs) {
+    // Remove empty-state placeholder on first real message
+    var empty = chatMessages.querySelector(".empty-state");
+
+    // Filter to only messages newer than what we've already rendered
+    var newMsgs = msgs.filter(function(m) { return m.timestamp > lastRenderedTs; });
+    if (!newMsgs.length) return;
+
+    if (empty) empty.remove();
+
+    // Remove any optimistic messages the librarian sent (they'll be replaced by DB version)
+    var optimistic = chatMessages.querySelectorAll(".msg-optimistic");
+    optimistic.forEach(function(el) { el.remove(); });
+
+    newMsgs.forEach(function(m) {
       var div = document.createElement("div");
       var cls = "msg ", label = "";
       if (m.role === "user") { cls += "msg-user"; label = "👤 Patron"; }
       else if (m.role === "librarian") { cls += "msg-librarian"; label = "👩‍💼 Librarian"; }
-      else { cls += "msg-assistant"; label = "🤖 Hero"; }
+      else { cls += "msg-assistant"; label = "🤖 Bot"; }
       var time = m.timestamp ? new Date(m.timestamp * 1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "";
       div.className = cls;
       div.innerHTML = '<div class="msg-label">' + label + " · " + time + '</div><div class="bubble">' + esc(m.content) + '</div>';
       chatMessages.appendChild(div);
+      if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
     });
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
@@ -311,10 +324,9 @@
     var text = replyInput.value.trim();
     if (!text || !liveChatId) return;
     replyInput.value = "";
-    // Show message instantly (optimistic UI) before server confirms
-    var now = Date.now() / 1000;
+    // Show message instantly (optimistic UI) — marked so poll can replace it with DB version
     var div = document.createElement("div");
-    div.className = "msg msg-librarian";
+    div.className = "msg msg-librarian msg-optimistic";
     var time = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
     div.innerHTML = '<div class="msg-label" style="text-align:right">👩‍💼 ' + esc(myName) + ' · ' + time + '</div><div class="bubble">' + esc(text) + '</div>';
     chatMessages.appendChild(div);
