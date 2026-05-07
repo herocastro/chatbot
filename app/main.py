@@ -410,15 +410,23 @@ async def chat(request: ChatRequest):
     history = session_mgr.get_history(request.session_id)
 
     # --- Check if handoff is active (librarian takeover) ---
-    if session_store is not None and session_store.is_handoff_active(request.session_id):
+    # Use get_active_live_chat as the primary signal — same as the poll endpoint.
+    # is_handoff_active() can return False on Vercel cold-start instances with empty
+    # sessions tables, causing patron messages to bypass the live chat route.
+    _active_live_chat = session_store.get_active_live_chat(request.session_id) if session_store else None
+    _handoff_active = _active_live_chat is not None or (
+        session_store is not None and session_store.is_handoff_active(request.session_id)
+    )
+    if _handoff_active:
         # Patron is in handoff mode — save their message to the live chat session
         session_mgr.add_message(request.session_id, "user", request.message)
         _store = session_store
         _sid = request.session_id
         _msg = request.message
+        _lc = _active_live_chat
         async def _persist_handoff():
             try:
-                live_chat = _store.get_active_live_chat(_sid)
+                live_chat = _lc or _store.get_active_live_chat(_sid)
                 if live_chat:
                     _store.save_live_chat_message(live_chat["id"], "user", _msg)
                 else:
