@@ -153,7 +153,7 @@
 
   // Session — persist across page navigations
   var STORE_KEY = "lc_chat";
-  var STORE_VER = 3; // bump to clear stale data
+  var STORE_VER = 4; // bump to clear stale data
   var stored = {};
   try {
     var raw = JSON.parse(sessionStorage.getItem(STORE_KEY)) || {};
@@ -275,11 +275,15 @@
     })
     .catch(function() {});
 
-  // Restore previous messages
+  // Restore previous messages — skip librarian poll messages (they start with "👩‍💼 Librarian:")
+  // because the poll will re-fetch them fresh from the DB, avoiding duplicates.
   if (chatHistory.length > 0) {
     var w = msgs.querySelector(".lc-w"); if (w) w.remove();
     var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
-    chatHistory.forEach(function(m) { addMsgRaw(m.text, m.cls, m.ts, m.imgUrl || null); });
+    chatHistory.forEach(function(m) {
+      if (m.cls === "b" && m.text && m.text.indexOf("👩‍💼 Librarian:") === 0) return;
+      addMsgRaw(m.text, m.cls, m.ts, m.imgUrl || null);
+    });
   }
 
   // Check if the existing session has expired — auto-reset to new chat
@@ -925,13 +929,7 @@
   var pollTimer = null;
   var _joinedMsgShown = false;
   var _returnToBotTimer = null;
-  var _seenMsgKeys = {}; // tracks keys of messages already rendered
-
-  // Pre-populate seen keys from restored chatHistory so poll doesn't duplicate
-  // messages that were already rendered from history on page load.
-  chatHistory.forEach(function(m) {
-    if (m.ts) _seenMsgKeys[m.ts + "|" + m.text] = true;
-  });
+  var _seenMsgKeys = {}; // tracks keys of messages already rendered by the poll
 
   function startPolling() {
     if (pollTimer) return;
@@ -1030,10 +1028,11 @@
             var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
             if (_seenMsgKeys[key]) return;
             if (m.role === "librarian") {
-              _origAddMsg("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
+              // Use addMsgRaw (no chatHistory save) — poll always re-fetches from DB on reload
+              addMsgRaw("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
               if (!m.content || m.content.indexOf("LLORA") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
-              _origAddMsg(m.content, "b", m.timestamp);
+              addMsgRaw(m.content, "b", m.timestamp);
             }
             _seenMsgKeys[key] = true;
             if (m.timestamp > lastPollTs) {
