@@ -85,12 +85,16 @@
   var params = new URLSearchParams(window.location.search);
   sessionId = params.get("session") || "";
 
-  // Restore name from sessionStorage so reload doesn't ask again
+  // Restore name + session from localStorage so reload/new-tab skips the name prompt
   var STORE_KEY = "lc_librarian_name";
-  var storedName = sessionStorage.getItem(STORE_KEY) || "";
-  // Also accept name from URL param (email link)
+  var STORE_SID  = "lc_librarian_session";
+  var storedName = localStorage.getItem(STORE_KEY) || "";
+  var storedSid  = localStorage.getItem(STORE_SID) || "";
+  // URL params take priority (email link)
   var urlName = params.get("name") || "";
   var initialName = urlName || storedName;
+  // If no session in URL but we have one stored, restore it
+  if (!sessionId && storedSid) sessionId = storedSid;
   if (initialName) nameInput.value = initialName;
 
   joinBtn.addEventListener("click", startChat);
@@ -103,14 +107,15 @@
     myName = nameInput.value.trim();
     if (!myName) { nameInput.style.borderColor = "#e74c3c"; nameInput.focus(); return; }
 
-    // Persist name so reload doesn't ask again
-    sessionStorage.setItem(STORE_KEY, myName);
+    // Persist name + session so reload/new-tab skips this form
+    localStorage.setItem(STORE_KEY, myName);
+    if (sessionId) localStorage.setItem(STORE_SID, sessionId);
 
     nameView.classList.add("hidden");
     chatView.classList.remove("hidden");
     chatView.style.display = "flex";
 
-    // Clean URL — keep session param but drop name (it's now in sessionStorage)
+    // Clean URL — keep session param but drop name (it's now in localStorage)
     if (window.history.replaceState) {
       var clean = window.location.pathname;
       if (sessionId) clean += "?session=" + encodeURIComponent(sessionId);
@@ -262,6 +267,7 @@
         chatStatus.textContent = "Chat has ended";
         document.getElementById("input-bar").style.display = "none";
         stopPoll();
+        localStorage.removeItem("lc_librarian_session");
       }
     } catch(e) {}
   }
@@ -380,6 +386,8 @@
       chatStatus.textContent = "Chat ended";
       document.getElementById("input-bar").style.display = "none";
       stopPoll();
+      // Clear stored session so next reload starts fresh
+      localStorage.removeItem("lc_librarian_session");
     } catch(e) {}
   });
 })();
