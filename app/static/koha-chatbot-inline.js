@@ -153,7 +153,7 @@
 
   // Session — persist across page navigations
   var STORE_KEY = "lc_chat";
-  var STORE_VER = 4; // bump to clear stale data
+  var STORE_VER = 3; // bump to clear stale data
   var stored = {};
   try {
     var raw = JSON.parse(sessionStorage.getItem(STORE_KEY)) || {};
