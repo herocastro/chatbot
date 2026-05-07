@@ -198,19 +198,22 @@
       });
       if (resp.status === 409) {
         var d = await resp.json();
-        chatStatus.textContent = "";
-        chatMessages.innerHTML =
-          '<div class="empty-state">' +
-          '<div style="font-size:1.5em;margin-bottom:12px">✅</div>' +
-          '<div style="font-size:1.05em;color:#2c3e50;margin-bottom:8px">This session is already being handled</div>' +
-          '<div style="color:#7f8c8d">Another librarian is chatting with the patron.</div>' +
-          '</div>';
-        document.getElementById("input-bar").style.display = "none";
-        document.getElementById("end-btn").style.display = "none";
-        return;
-      } else {
-        chatStatus.innerHTML = "Connected as <strong>" + esc(myName) + "</strong>";
+        // If already claimed by someone else — show read-only view
+        if (d.claimed_by && d.claimed_by !== myName) {
+          chatStatus.textContent = "";
+          chatMessages.innerHTML =
+            '<div class="empty-state">' +
+            '<div style="font-size:1.5em;margin-bottom:12px">✅</div>' +
+            '<div style="font-size:1.05em;color:#2c3e50;margin-bottom:8px">This session is already being handled</div>' +
+            '<div style="color:#7f8c8d">Another librarian is chatting with the patron.</div>' +
+            '</div>';
+          document.getElementById("input-bar").style.display = "none";
+          document.getElementById("end-btn").style.display = "none";
+          return;
+        }
+        // 409 but claimed by me (reload) — fall through and reconnect normally
       }
+      chatStatus.innerHTML = "Connected as <strong>" + esc(myName) + "</strong>";
     } catch(e) { chatStatus.textContent = "Connected"; }
     await loadPatronInfo();
     lastRenderedTs = 0;

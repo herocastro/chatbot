@@ -925,7 +925,13 @@
   var pollTimer = null;
   var _joinedMsgShown = false;
   var _returnToBotTimer = null;
-  var _seenMsgKeys = {}; // tracks timestamp|content of rendered messages to handle equal timestamps
+  var _seenMsgKeys = {}; // tracks keys of messages already rendered
+
+  // Pre-populate seen keys from restored chatHistory so poll doesn't duplicate
+  // messages that were already rendered from history on page load.
+  chatHistory.forEach(function(m) {
+    if (m.ts) _seenMsgKeys[m.ts + "|" + m.text] = true;
+  });
 
   function startPolling() {
     if (pollTimer) return;
