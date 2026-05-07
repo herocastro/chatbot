@@ -797,8 +797,10 @@
     var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
     addMsg(text, "u");
     inp.value = "";
-    // During active handoff with a librarian, don't show typing indicator
-    if (handoffActive && handoffHandler) {
+    // During active handoff, always use the silent path — the backend routes
+    // the message to the live chat session regardless of whether the librarian
+    // has joined yet (handoffHandler may be null while waiting).
+    if (handoffActive) {
       // Just send the message, no loading state — librarian sees it via poll
       fetch(CHATBOT_API + "/api/chat", {
         method: "POST",
@@ -893,9 +895,7 @@
       }
     })
     .finally(function () {
-      if (!handoffActive || handoffHandler) {
-        inp.disabled = false; inp.focus(); btn.disabled = !inp.value.trim();
-      }
+      inp.disabled = false; inp.focus(); btn.disabled = !inp.value.trim();
     });
   }
 
