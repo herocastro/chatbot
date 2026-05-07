@@ -906,6 +906,7 @@
     handoffHandler = null;
     lastPollTs = 0;
     _joinedMsgShown = false;
+    ratingShown = false;
     // Restore librarian button only if it was available before handoff started
     if (libBtnAvailable) {
       libBtn.style.opacity = "1";
@@ -999,9 +1000,13 @@
           });
         }
         // Then check if handoff just ended — show rating AFTER messages
-        if (!d.handoff_active && handoffActive) {
+        // Only trigger end-of-chat if a librarian actually joined (handoffHandler set)
+        if (!d.handoff_active && handoffActive && handoffHandler) {
           stopPolling(true); // keep input disabled until rating is submitted
           showHandoffRating();
+        } else if (!d.handoff_active && handoffActive && !handoffHandler) {
+          // Handoff ended before any librarian joined (cancelled/expired) — just stop quietly
+          stopPolling();
         }
         // Check if librarian is typing
         if (handoffActive && handoffHandler) {
@@ -1095,6 +1100,7 @@
     fetch(CHATBOT_API + "/api/poll/" + encodeURIComponent(sid) + "?since=0")
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        // Only resume if handoff is genuinely still active on the server
         if (d.handoff_active) {
           lastPollTs = Date.now() / 1000;
           // If a librarian already claimed, set handoffHandler and mark joined
@@ -1112,6 +1118,7 @@
             removeCancelButton();
           }
         }
+        // If handoff_active is false, do nothing — don't trigger any end-of-chat UI
       })
       .catch(function() {});
   })();
