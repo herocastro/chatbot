@@ -897,7 +897,7 @@
     btn.disabled = true;
     // Show cancel button while waiting
     showCancelButton();
-    pollTimer = setInterval(pollForMessages, 3000);
+    pollTimer = setInterval(pollForMessages, 1000);
   }
 
   function stopPolling(keepInputDisabled) {

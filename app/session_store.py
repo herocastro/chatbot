@@ -674,6 +674,7 @@ class SessionStore:
     def create_live_chat(self, parent_session_id: str) -> str:
         """Create a new live chat session linked to a parent bot session.
 
+        Copies patron_info from the parent session if available.
         Returns the new live chat session ID.
         """
         import uuid
@@ -681,10 +682,17 @@ class SessionStore:
         now = time.time()
         conn = self._get_connection()
         try:
+            # Get patron_info from parent session
+            parent_row = conn.execute(
+                "SELECT patron_info FROM sessions WHERE session_id = ?",
+                (parent_session_id,),
+            ).fetchone()
+            patron_info = parent_row["patron_info"] if parent_row else None
+
             conn.execute(
-                """INSERT INTO live_chat_sessions (id, parent_session_id, status, created_at)
-                   VALUES (?, ?, 'waiting', ?)""",
-                (live_chat_id, parent_session_id, now),
+                """INSERT INTO live_chat_sessions (id, parent_session_id, status, created_at, patron_info)
+                   VALUES (?, ?, 'waiting', ?, ?)""",
+                (live_chat_id, parent_session_id, now, patron_info),
             )
             conn.commit()
             return live_chat_id
