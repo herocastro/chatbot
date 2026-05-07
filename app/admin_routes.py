@@ -803,15 +803,16 @@ async def end_live_chat(live_chat_id: str):
 
 
 @router.get("/live-chat/{live_chat_id}/messages")
-async def get_live_chat_messages(live_chat_id: str):
-    """Return all messages and status for a live chat session.
+async def get_live_chat_messages(live_chat_id: str, since: float = Query(default=0)):
+    """Return messages and status for a live chat session.
 
+    Pass ?since=<timestamp> to get only new messages (incremental polling).
     Also refreshes the parent session's last_activity so an active live chat
     never gets auto-expired while the librarian is still connected.
     """
     store = _get_store()
     try:
-        messages = store.get_all_live_chat_messages(live_chat_id)
+        messages = store.get_live_chat_messages(live_chat_id, since=since)
         conn = store._get_connection()
         try:
             row = conn.execute(

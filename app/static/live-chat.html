@@ -201,7 +201,12 @@
     } catch(e) { chatStatus.textContent = "Connected"; }
     await loadPatronInfo();
     lastRenderedTs = 0;
-    await loadMessages();
+    // Retry initial load up to 3 times to handle Vercel cold-start empty DB
+    for (var _attempt = 0; _attempt < 3; _attempt++) {
+      await loadMessages();
+      if (lastRenderedTs > 0) break; // got messages, stop retrying
+      await new Promise(function(r) { setTimeout(r, 1500); });
+    }
     startPoll();
     replyInput.focus();
   }
@@ -239,7 +244,9 @@
   async function loadMessages() {
     if (!liveChatId) return;
     try {
-      var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/messages", { headers: { "X-Admin-Key": apiKey } });
+      var url = "/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/messages";
+      if (lastRenderedTs > 0) url += "?since=" + lastRenderedTs;
+      var resp = await fetch(url, { headers: { "X-Admin-Key": apiKey } });
       var data = await resp.json();
       appendNewMessages(data.messages || []);
       if (data.status === "ended") {
