@@ -1083,6 +1083,16 @@
           logoutBtn.classList.remove("hidden");
           showUserInfo();
           Promise.all([loadStats(), loadSessions()]);
+          // Pre-load whichever tab is currently active
+          var activeTab = document.querySelector(".tab-btn.active");
+          if (activeTab) {
+            var activeTabId = activeTab.getAttribute("data-tab");
+            if (activeTabId === "hours-tab") loadLibraryHours();
+            else if (activeTabId === "ai-settings-tab") loadAiSettings();
+            else if (activeTabId === "library-info-tab") loadLibraryInfo();
+            else if (activeTabId === "analytics-tab") loadAnalytics();
+            else if (activeTabId === "handoff-tab") loadHandoffQueue();
+          }
           startAutoRefresh();
         } catch (err) {
           loginError.textContent = "Network error: " + err.message;
@@ -1352,6 +1362,16 @@
           hideLoading();
           showUserInfo();
           Promise.all([loadStats(), loadSessions()]);
+          // Pre-load whichever tab is currently active (e.g. from URL hash)
+          var activeTab = document.querySelector(".tab-btn.active");
+          if (activeTab) {
+            var activeTabId = activeTab.getAttribute("data-tab");
+            if (activeTabId === "hours-tab") loadLibraryHours();
+            else if (activeTabId === "ai-settings-tab") loadAiSettings();
+            else if (activeTabId === "library-info-tab") loadLibraryInfo();
+            else if (activeTabId === "analytics-tab") loadAnalytics();
+            else if (activeTabId === "handoff-tab") loadHandoffQueue();
+          }
           startAutoRefresh();
         })();
       }
