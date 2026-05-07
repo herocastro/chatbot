@@ -81,6 +81,7 @@
         <button class="tab-btn" data-tab="quality-tab" type="button">Quality</button>
         <button class="tab-btn" data-tab="library-info-tab" type="button">Library Info</button>
         <button class="tab-btn" data-tab="ai-settings-tab" type="button">🤖 AI Settings</button>
+        <button class="tab-btn" data-tab="hours-tab" type="button">🕐 Library Hours</button>
         <button class="tab-btn" data-tab="management-tab" type="button">Management</button>
         <button class="tab-btn" data-tab="handoff-tab" type="button" id="handoff-tab-btn">💬 Live Chat</button>
         <button class="tab-btn" data-tab="notify-tab" type="button">📧 Notify Staff</button>
@@ -279,6 +280,21 @@
           </div>
         </div>
       </div><!-- end ai-settings-tab -->
+
+      <div id="hours-tab" class="tab-content">
+        <div class="li-editor-wrap">
+          <div class="li-header">
+            <p class="li-desc">Set the library's opening and closing times for each day. The <strong>Librarian</strong> button in the chat widget is automatically disabled outside these hours and 30 minutes before closing.</p>
+            <div class="li-actions">
+              <button id="hours-save-btn" type="button" class="btn-primary">Save Hours</button>
+              <span id="hours-save-status" class="li-status"></span>
+            </div>
+          </div>
+          <div class="ai-settings-grid" id="hours-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div><!-- end hours-tab -->
 
       <div id="management-tab" class="tab-content">
         <div class="mgmt-grid">
@@ -1369,6 +1385,9 @@
           if (btn.getAttribute("data-tab") === "ai-settings-tab") {
             loadAiSettings();
           }
+          if (btn.getAttribute("data-tab") === "hours-tab") {
+            loadLibraryHours();
+          }
           if (btn.getAttribute("data-tab") === "management-tab") {
             loadFlaggedSessions();
           }
@@ -1895,6 +1914,95 @@
           statusEl.style.color = "#e74c3c";
         }
         setTimeout(function () { statusEl.textContent = ""; }, 4000);
+      });
+
+      // --- Library Hours ---
+      var DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+      var DAY_LABELS = { monday:"Monday", tuesday:"Tuesday", wednesday:"Wednesday",
+        thursday:"Thursday", friday:"Friday", saturday:"Saturday", sunday:"Sunday" };
+
+      async function loadLibraryHours() {
+        var data = await apiFetch("/admin/api/library-hours");
+        if (!data) return;
+        renderHoursGrid(data);
+      }
+
+      function renderHoursGrid(hours) {
+        var grid = document.getElementById("hours-grid");
+        grid.innerHTML = "";
+        DAYS.forEach(function(day) {
+          var windows = hours[day] || [];
+          var section = document.createElement("div");
+          section.className = "ai-settings-section";
+          section.dataset.day = day;
+          var open = windows.length > 0 ? windows[0].open : "07:00";
+          var close = windows.length > 0 ? windows[0].close : "19:00";
+          var closed = windows.length === 0;
+          section.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+              '<label style="font-weight:600;font-size:.95em">' + DAY_LABELS[day] + '</label>' +
+              '<label style="display:flex;align-items:center;gap:6px;font-size:.85em;color:#7f8c8d;cursor:pointer">' +
+                '<input type="checkbox" class="hours-closed-chk"' + (closed ? ' checked' : '') + '> Closed</label>' +
+            '</div>' +
+            '<div class="hours-time-row" style="display:' + (closed ? 'none' : 'flex') + ';gap:16px;align-items:center">' +
+              '<div style="display:flex;flex-direction:column;gap:4px">' +
+                '<label style="font-size:.78em;color:#7f8c8d">Opens</label>' +
+                '<input type="time" class="hours-open ai-input" value="' + open + '" style="width:130px">' +
+              '</div>' +
+              '<div style="display:flex;flex-direction:column;gap:4px">' +
+                '<label style="font-size:.78em;color:#7f8c8d">Closes</label>' +
+                '<input type="time" class="hours-close ai-input" value="' + close + '" style="width:130px">' +
+              '</div>' +
+            '</div>';
+          section.querySelector(".hours-closed-chk").addEventListener("change", function() {
+            section.querySelector(".hours-time-row").style.display = this.checked ? "none" : "flex";
+          });
+          grid.appendChild(section);
+        });
+      }
+
+      document.getElementById("hours-save-btn").addEventListener("click", async function() {
+        var payload = {};
+        var statusEl = document.getElementById("hours-save-status");
+        var valid = true;
+        DAYS.forEach(function(day) {
+          var section = document.querySelector("[data-day='" + day + "']");
+          if (!section) return;
+          var closed = section.querySelector(".hours-closed-chk").checked;
+          if (closed) {
+            payload[day] = [];
+          } else {
+            var open = section.querySelector(".hours-open").value;
+            var close = section.querySelector(".hours-close").value;
+            if (!open || !close) { valid = false; return; }
+            payload[day] = [{ open: open, close: close }];
+          }
+        });
+        if (!valid) {
+          statusEl.textContent = "✗ Fill in all open/close times";
+          statusEl.style.color = "#e74c3c";
+          setTimeout(function() { statusEl.textContent = ""; }, 3000);
+          return;
+        }
+        try {
+          var resp = await fetch("/admin/api/library-hours", {
+            method: "PUT",
+            headers: { "X-Admin-Key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (resp.ok) {
+            statusEl.textContent = "✓ Saved";
+            statusEl.style.color = "#27ae60";
+          } else {
+            var err = await resp.json().catch(function() { return {}; });
+            statusEl.textContent = "✗ " + (err.error || "Save failed");
+            statusEl.style.color = "#e74c3c";
+          }
+        } catch(e) {
+          statusEl.textContent = "✗ Network error";
+          statusEl.style.color = "#e74c3c";
+        }
+        setTimeout(function() { statusEl.textContent = ""; }, 4000);
       });
 
       // --- CSV Export ---
