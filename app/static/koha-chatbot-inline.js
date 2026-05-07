@@ -973,7 +973,7 @@
       .then(function(d) {
         if (d.status === "ok") {
           stopPolling();
-          _origAddMsg("Librarian request cancelled. Back to help! 👋 What else can I do for you?", "b");
+          _origAddMsg("Librarian request cancelled. 👋 I'm LLORA, your AI assistant — what can I help you with?", "b");
         } else if (d.error) {
           removeCancelButton(); // Staff already claimed — keep polling
         }
@@ -1007,7 +1007,7 @@
             if (m.role === "librarian") {
               _origAddMsg("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
-              if (!m.content || m.content.indexOf("Back to help") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
+              if (!m.content || m.content.indexOf("LLORA") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
               _origAddMsg(m.content, "b", m.timestamp);
             }
             _seenMsgKeys[key] = true;
@@ -1091,7 +1091,7 @@
     returnToBot._done = true;
     if (_returnToBotTimer) { clearTimeout(_returnToBotTimer); _returnToBotTimer = null; }
     ratingShown = false;
-    _origAddMsg("Back to help! 👋 What else can I do for you?", "b");
+    _origAddMsg("👩‍💼 LLORA (AI Assistant) is back! 🤖 What else can I help you with?", "b");
     inp.disabled = false;
     inp.placeholder = "Ask me about the library...";
     btn.disabled = !inp.value.trim();

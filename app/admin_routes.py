@@ -793,7 +793,7 @@ async def end_live_chat(live_chat_id: str):
             ).fetchone()
             if row:
                 store.save_message(row["parent_session_id"], "assistant",
-                    "The librarian has ended the chat. Back to help! 👋 What else can I do for you?")
+                    "The librarian has ended the chat. 👋 I'm LLORA, your AI assistant — what else can I help you with?")
         finally:
             conn.close()
         return {"status": "ok"}
@@ -847,7 +847,7 @@ async def end_handoff(session_id: str):
         else:
             store.deactivate_handoff(session_id)
         store.save_message(session_id, "assistant",
-            "The librarian has ended the chat. Back to help! 👋 What else can I do for you?")
+            "The librarian has ended the chat. 👋 I'm LLORA, your AI assistant — what else can I help you with?")
         return {"status": "ok"}
     except Exception:
         logger.exception("Failed to end handoff for session %s", session_id)

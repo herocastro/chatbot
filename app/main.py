@@ -640,7 +640,7 @@ async def cancel_handoff(request: ChatRequest):
         session_store.cancel_live_chat(live_chat["id"])
         session_store.save_message(
             request.session_id, "assistant",
-            "Librarian request cancelled. Back to help! 👋 What else can I do for you?"
+            "Librarian request cancelled. 👋 I'm LLORA, your AI assistant — what can I help you with?"
         )
         return {"status": "ok"}
     except Exception:
