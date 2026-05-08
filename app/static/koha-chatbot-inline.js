@@ -227,7 +227,6 @@
   if (initFaqContainer) loadAndRenderFaqs(initFaqContainer);
 
   // Load AI config (name + welcome message) from server
-  // Also checks library hours to show after-hours message when closed
   var AFTER_HOURS_MESSAGE = (
     "Hello! Thank you for reaching out. I'm LLORA, your virtual assistant. " +
     "Our team is currently offline. Please leave your questions or inquiries, " +
@@ -247,31 +246,13 @@
       if (hdr) {
         var span = hdr.querySelector("span[aria-hidden]");
         if (span) span.nextSibling && (span.nextSibling.textContent = " " + name + " — Library Assistant");
-        // Rebuild header text node
         hdr.childNodes.forEach(function(n) {
           if (n.nodeType === 3) n.textContent = " " + name + " — Library Assistant";
         });
       }
-      // Check library hours — show after-hours message if closed
-      fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
-        .then(function(r2) { return r2.json(); })
-        .then(function(avail) {
-          var wEl = msgs.querySelector(".lc-w");
-          if (!wEl) return; // chat already started, don't overwrite
-          if (!avail.available) {
-            wEl.textContent = AFTER_HOURS_MESSAGE;
-            // Hide FAQ buttons during after-hours
-            var fqEl = msgs.querySelector(".lc-faqs");
-            if (fqEl) fqEl.style.display = "none";
-          } else {
-            wEl.textContent = welcome;
-          }
-        })
-        .catch(function() {
-          // On error, show normal welcome
-          var wEl = msgs.querySelector(".lc-w");
-          if (wEl) wEl.textContent = welcome;
-        });
+      // Always show normal welcome + FAQs regardless of library hours
+      var wEl = msgs.querySelector(".lc-w");
+      if (wEl) wEl.textContent = welcome;
     })
     .catch(function() {});
 
@@ -714,7 +695,13 @@
 
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
-    if (!libBtnAvailable) return; // outside library hours
+    if (!libBtnAvailable) {
+      // Outside library hours — show offline message in chat instead of silently blocking
+      var w = msgs.querySelector(".lc-w"); if (w) w.remove();
+      var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
+      addMsg(AFTER_HOURS_MESSAGE, "b");
+      return;
+    }
     // Disable immediately to prevent double-click showing the form twice
     libBtn.disabled = true;
     libBtn.style.opacity = "0.45";
@@ -774,19 +761,6 @@
     btn.disabled = false;
     // Re-check librarian availability after reset
     checkLibrarianAvailability();
-    // Also update welcome message based on current hours
-    fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
-      .then(function(r) { return r.json(); })
-      .then(function(avail) {
-        var wEl = msgs.querySelector(".lc-w");
-        if (!wEl) return;
-        if (!avail.available) {
-          wEl.textContent = AFTER_HOURS_MESSAGE;
-          var fqEl = msgs.querySelector(".lc-faqs");
-          if (fqEl) fqEl.style.display = "none";
-        }
-      })
-      .catch(function() {});
     saveState();
   }
 
