@@ -640,9 +640,14 @@ class SessionStore:
         info = _json.dumps({"patron_type": patron_type, "patron_details": patron_details})
         conn = self._get_connection()
         try:
+            # Upsert session row so patron_info is saved even before the first message
+            import time as _time
+            now = _time.time()
             conn.execute(
-                "UPDATE sessions SET patron_info = ? WHERE session_id = ?",
-                (info, session_id),
+                """INSERT INTO sessions (session_id, created_at, last_activity, message_count, patron_info)
+                   VALUES (?, ?, ?, 0, ?)
+                   ON CONFLICT(session_id) DO UPDATE SET patron_info = excluded.patron_info""",
+                (session_id, now, now, info),
             )
             conn.execute(
                 """UPDATE live_chat_sessions SET patron_info = ?
