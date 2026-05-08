@@ -524,8 +524,19 @@
         </div>
         <div class="li-drawer-field">
           <label for="li-d-content">Bot Reply</label>
-          <p class="ai-hint">The answer shown to the patron. Leave blank to let the AI answer.</p>
+          <p class="ai-hint">The answer shown to the patron. Leave blank to let the AI answer. Use <code>[Link Text](https://url)</code> to add clickable links.</p>
           <textarea id="li-d-content" rows="6" placeholder="Type the answer here, or leave blank for AI to answer…" aria-label="FAQ content"></textarea>
+          <div style="display:flex;gap:6px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <div style="font-size:0.78em;color:#7f8c8d;margin-bottom:3px">Link text</div>
+              <input type="text" id="li-d-link-text" placeholder="e.g. Book Renewal Form" style="width:100%;padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:0.88em" aria-label="Link display text">
+            </div>
+            <div style="flex:2;min-width:160px">
+              <div style="font-size:0.78em;color:#7f8c8d;margin-bottom:3px">URL</div>
+              <input type="url" id="li-d-link-url" placeholder="https://example.com/form" style="width:100%;padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:0.88em" aria-label="Link URL">
+            </div>
+            <button type="button" id="li-d-insert-link" class="back-btn" style="padding:6px 12px;font-size:0.82em;white-space:nowrap;flex-shrink:0">Insert Link</button>
+          </div>
         </div>
         <div class="li-drawer-field">
           <label for="li-d-image">Image <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
@@ -1705,6 +1716,23 @@
       });
 
       document.getElementById("li-add-faq-btn").addEventListener("click", function() { openDrawer(-1); });
+
+      // Insert link helper — inserts [text](url) at cursor in the content textarea
+      document.getElementById("li-d-insert-link").addEventListener("click", function() {
+        var linkText = document.getElementById("li-d-link-text").value.trim();
+        var linkUrl = document.getElementById("li-d-link-url").value.trim();
+        if (!linkUrl) { document.getElementById("li-d-link-url").focus(); return; }
+        if (!linkText) linkText = linkUrl;
+        var textarea = document.getElementById("li-d-content");
+        var insert = "[" + linkText + "](" + linkUrl + ")";
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + insert + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+        textarea.focus();
+        document.getElementById("li-d-link-text").value = "";
+        document.getElementById("li-d-link-url").value = "";
+      });
 
       // Image preview and upload
       function updateImagePreview(url) {
