@@ -1031,8 +1031,8 @@
               // Use addMsgRaw (no chatHistory save) — poll always re-fetches from DB on reload
               addMsgRaw("👩‍💼 Librarian: " + m.content, "b", m.timestamp);
             } else if (m.role === "assistant") {
-              if (!m.content || m.content.indexOf("LLORA") !== -1 || m.content.indexOf("ended the chat") !== -1) return;
-              addMsgRaw(m.content, "b", m.timestamp);
+              if (!m.content || m.content.indexOf("LLORA") !== -1 || m.content.indexOf("ended the chat") !== -1 || m.content.indexOf("notified a librarian") !== -1) return;
+              _origAddMsg(m.content, "b", m.timestamp);
             }
             _seenMsgKeys[key] = true;
             if (m.timestamp > lastPollTs) {
@@ -1170,7 +1170,8 @@
               if (m.role === "librarian") {
                 combined.push({ ts: m.timestamp || 0, content: m.content, isLibrarian: true });
               }
-              // skip user/assistant — already in chatHistory
+              // skip user — already in chatHistory
+              // skip assistant — already in chatHistory (system messages like "notified a librarian")
             });
             combined.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
 
