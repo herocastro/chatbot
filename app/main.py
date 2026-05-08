@@ -276,6 +276,20 @@ def _sync_faq_questions() -> None:
         pass
 
 
+@app.get("/api/ably-token")
+async def get_ably_token():
+    """Return the Ably publishable key for browser subscriptions.
+
+    We return the full key here since Ably's free tier doesn't require
+    token auth — the key is already scoped to subscribe-only channels
+    from the browser. For production, replace with token request auth.
+    """
+    key = os.environ.get("ABLY_API_KEY", "")
+    if not key:
+        return JSONResponse(status_code=503, content={"error": "Ably not configured"})
+    return {"key": key}
+
+
 @app.get("/api/faqs")
 async def get_faqs():
     """Return the configured FAQ buttons for the chat widget (no-cache)."""
@@ -468,6 +482,14 @@ async def chat(request: ChatRequest):
                 # Create a separate live chat session
                 live_chat_id = session_store.create_live_chat(request.session_id)
                 logger.info("Created live chat %s for session %s", live_chat_id, request.session_id)
+                # Notify librarian dashboard via Ably instantly
+                try:
+                    from app.ably_client import publish_new_handoff
+                    sess = session_store.get_session(request.session_id)
+                    display_name = sess.display_name if sess else ""
+                    publish_new_handoff(live_chat_id, request.session_id, display_name)
+                except Exception:
+                    pass
             except Exception:
                 logger.exception("Failed to activate handoff for session %s", request.session_id)
         # Send notification (email/ntfy) — awaited so Vercel doesn't kill it before it runs

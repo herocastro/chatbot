@@ -224,6 +224,7 @@
       await new Promise(function(r) { setTimeout(r, 1500); });
     }
     startPoll();
+    _initAblyLibrarian(liveChatId);
     replyInput.focus();
   }
 
@@ -257,6 +258,42 @@
 
   var lastRenderedTs = 0;
   var _libSeenIds = new Set(); // tracks message IDs/keys already rendered
+  var _ablyClient = null;
+
+  function _initAblyLibrarian(liveChatId) {
+    fetch("/api/ably-token")
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.key) return;
+        function connect(key) {
+          try {
+            if (_ablyClient) { try { _ablyClient.close(); } catch(e) {} }
+            _ablyClient = new Ably.Realtime({ key: key, recover: function(_, cb) { cb(true); } });
+            var ch = _ablyClient.channels.get("live-chat:" + liveChatId);
+            ch.subscribe("message", function(msg) {
+              if (msg.data) appendNewMessages([msg.data]);
+            });
+            ch.subscribe("status", function(msg) {
+              if (msg.data && msg.data.status === "ended") {
+                chatStatus.textContent = "Chat has ended";
+                document.getElementById("input-bar").style.display = "none";
+                stopPoll();
+                localStorage.removeItem("lc_librarian_session");
+              }
+            });
+          } catch(e) {}
+        }
+        if (typeof Ably !== "undefined") {
+          connect(d.key);
+        } else {
+          var s = document.createElement("script");
+          s.src = "https://cdn.ably.com/lib/ably.min-2.js";
+          s.onload = function() { connect(d.key); };
+          document.head.appendChild(s);
+        }
+      })
+      .catch(function() {});
+  }
 
   async function loadMessages() {
     if (!liveChatId) return;
@@ -314,7 +351,7 @@
   }
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML.replace(/\n/g, "<br>"); }
-  function startPoll() { stopPoll(); pollTimer = setInterval(function() { loadMessages(); checkPatronTyping(); }, 1000); }
+  function startPoll() { stopPoll(); pollTimer = setInterval(function() { loadMessages(); checkPatronTyping(); }, 5000); }
   function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
   async function checkPatronTyping() {

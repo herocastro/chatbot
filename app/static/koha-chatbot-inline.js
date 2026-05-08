@@ -922,7 +922,7 @@
     });
   }
 
-  // --- Librarian handoff polling ---
+  // --- Librarian handoff polling + Ably real-time ---
   var handoffActive = false;
   var handoffHandler = null;
   var lastPollTs = 0;
@@ -930,6 +930,52 @@
   var _joinedMsgShown = false;
   var _returnToBotTimer = null;
   var _seenMsgKeys = {}; // tracks keys of messages already rendered by the poll
+  var _ablyClient = null;
+  var _ablyChannel = null;
+  var _ablyLiveChatId = null;
+
+  function _initAbly(liveChatId, onMessage, onStatus) {
+    if (_ablyClient && _ablyLiveChatId === liveChatId) return; // already subscribed
+    _ablyLiveChatId = liveChatId;
+    // Load Ably SDK from CDN if not already loaded
+    function connectAbly(key) {
+      try {
+        if (typeof Ably === "undefined") return; // SDK not loaded yet
+        if (_ablyClient) { try { _ablyClient.close(); } catch(e) {} }
+        _ablyClient = new Ably.Realtime({ key: key, recover: function(_, cb) { cb(true); } });
+        _ablyChannel = _ablyClient.channels.get("live-chat:" + liveChatId);
+        _ablyChannel.subscribe("message", function(msg) {
+          if (msg.data) onMessage(msg.data);
+        });
+        _ablyChannel.subscribe("status", function(msg) {
+          if (msg.data) onStatus(msg.data);
+        });
+      } catch(e) {}
+    }
+    fetch(CHATBOT_API + "/api/ably-token")
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.key) return;
+        if (typeof Ably !== "undefined") {
+          connectAbly(d.key);
+        } else {
+          // Load SDK then connect
+          var s = document.createElement("script");
+          s.src = "https://cdn.ably.com/lib/ably.min-2.js";
+          s.onload = function() { connectAbly(d.key); };
+          document.head.appendChild(s);
+        }
+      })
+      .catch(function() {});
+  }
+
+  function _stopAbly() {
+    try {
+      if (_ablyChannel) { _ablyChannel.unsubscribe(); _ablyChannel = null; }
+      if (_ablyClient) { _ablyClient.close(); _ablyClient = null; }
+    } catch(e) {}
+    _ablyLiveChatId = null;
+  }
 
   function startPolling() {
     if (pollTimer) return;
@@ -940,7 +986,43 @@
     inp.placeholder = "Waiting for a librarian…";
     btn.disabled = true;
     showCancelButton();
-    pollTimer = setInterval(pollForMessages, 2000);
+    // Fallback poll every 4s (Ably handles real-time; poll catches missed events)
+    pollTimer = setInterval(pollForMessages, 4000);
+  }
+
+  function _startAblyForLiveChat(liveChatId) {
+    _initAbly(liveChatId,
+      function onMessage(data) {
+        // New message from Ably — same dedup logic as poll
+        var key = data.id != null ? ("id:" + data.id) : (data.timestamp + "|" + data.content);
+        if (_seenMsgKeys[key]) return;
+        if (data.role === "librarian") {
+          addMsgRaw("👩‍💼 Librarian: " + data.content, "b", data.timestamp);
+        } else if (data.role === "assistant") {
+          if (!data.content || data.content.indexOf("LLORA") !== -1 || data.content.indexOf("ended the chat") !== -1 || data.content.indexOf("notified a librarian") !== -1) return;
+          addMsgRaw(data.content, "b", data.timestamp);
+        }
+        _seenMsgKeys[key] = true;
+        if (data.timestamp > lastPollTs) lastPollTs = data.timestamp;
+      },
+      function onStatus(data) {
+        if (data.status === "active" && data.staff_username && !handoffHandler) {
+          handoffHandler = data.staff_username;
+          removeCancelButton();
+          inp.disabled = false;
+          inp.placeholder = "Type your message…";
+          btn.disabled = false;
+          if (!_joinedMsgShown) {
+            _joinedMsgShown = true;
+            _origAddMsg("A librarian has joined the chat! 👋", "b");
+          }
+        } else if (data.status === "ended" && handoffActive && handoffHandler) {
+          stopPolling(true);
+          _stopAbly();
+          showHandoffRating();
+        }
+      }
+    );
   }
 
   function stopPolling(keepInputDisabled) {
@@ -962,6 +1044,7 @@
     }
     removeCancelButton();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    _stopAbly();
     resetInactivityTimer();
     checkLibrarianAvailability();
   }
@@ -1008,6 +1091,11 @@
     fetch(CHATBOT_API + "/api/poll/" + encodeURIComponent(sid) + "?since=" + lastPollTs)
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        // Subscribe to Ably channel as soon as we know the live_chat_id
+        if (d.live_chat_id && d.live_chat_id !== _ablyLiveChatId) {
+          _startAblyForLiveChat(d.live_chat_id);
+        }
+
         // Librarian joined — only show if we're still in an active handoff
         if (d.handled_by && d.handled_by !== handoffHandler && handoffActive) {
           handoffHandler = d.handled_by;

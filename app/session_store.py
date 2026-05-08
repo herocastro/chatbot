@@ -868,6 +868,13 @@ class SessionStore:
         finally:
             conn.close()
 
+        # Publish claimed status so patron widget knows librarian joined instantly
+        try:
+            from app.ably_client import publish_handoff_status
+            publish_handoff_status(live_chat_id, "", "active", username)
+        except Exception:
+            pass
+
     def release_live_chat(self, live_chat_id: str) -> None:
         """Release a claimed live chat so another staff can pick it up."""
         conn = self._get_connection()
@@ -917,6 +924,13 @@ class SessionStore:
         finally:
             conn.close()
 
+        # Publish ended status so both sides know instantly
+        try:
+            from app.ably_client import publish_handoff_status
+            publish_handoff_status(live_chat_id, "", "ended")
+        except Exception:
+            pass
+
     def cancel_live_chat(self, live_chat_id: str) -> bool:
         """Cancel a live chat (only if not yet claimed). Returns True if cancelled."""
         conn = self._get_connection()
@@ -951,13 +965,16 @@ class SessionStore:
             conn.close()
 
     def save_live_chat_message(self, live_chat_id: str, role: str, content: str) -> None:
-        """Save a message to a live chat session."""
+        """Save a message to a live chat session and publish to Ably for real-time delivery."""
+        ts = time.time()
         conn = self._get_connection()
+        msg_id = None
         try:
-            conn.execute(
+            cur = conn.execute(
                 "INSERT INTO live_chat_messages (live_chat_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-                (live_chat_id, role, content, time.time()),
+                (live_chat_id, role, content, ts),
             )
+            msg_id = cur.lastrowid
             # Also update parent session's last_activity to keep it alive
             parent = conn.execute(
                 "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
@@ -966,13 +983,21 @@ class SessionStore:
             if parent:
                 conn.execute(
                     "UPDATE sessions SET last_activity = ? WHERE session_id = ?",
-                    (time.time(), parent["parent_session_id"]),
+                    (ts, parent["parent_session_id"]),
                 )
             conn.commit()
         except Exception:
             logger.exception("Failed to save live chat message for %s", live_chat_id)
             raise
         finally:
+            conn.close()
+
+        # Publish to Ably after DB commit so browsers get the message instantly
+        try:
+            from app.ably_client import publish_live_chat_message
+            publish_live_chat_message(live_chat_id, role, content, ts, msg_id)
+        except Exception:
+            pass  # non-fatal — polling is the fallback
             conn.close()
 
     def get_live_chat_messages(self, live_chat_id: str, since: float = 0) -> list[dict]:
