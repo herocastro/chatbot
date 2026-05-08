@@ -1297,6 +1297,7 @@ class SessionStore:
             rows = conn.execute(
                 f"""SELECT lc.id, lc.parent_session_id, lc.staff_username, lc.status,
                            lc.created_at, lc.claimed_at, lc.ended_at,
+                           lc.patron_info,
                            s.display_name,
                            (SELECT COUNT(*) FROM live_chat_messages WHERE live_chat_id = lc.id) AS msg_count,
                            sr.rating
@@ -1309,11 +1310,21 @@ class SessionStore:
                 params + [page_size, (page - 1) * page_size],
             ).fetchall()
 
+            import json as _json
+            def _parse_patron(raw):
+                if not raw:
+                    return None
+                try:
+                    return _json.loads(raw)
+                except Exception:
+                    return None
+
             entries = [
                 {
                     "live_chat_id": r["id"],
                     "session_id": r["parent_session_id"],
                     "display_name": r["display_name"] or "",
+                    "patron_info": _parse_patron(r["patron_info"]),
                     "handled_by": r["staff_username"] or "—",
                     "created_at": r["created_at"],
                     "claimed_at": r["claimed_at"],

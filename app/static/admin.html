@@ -2282,8 +2282,11 @@
         sessions.forEach(function(s) {
           var tr = document.createElement("tr");
           var ratingHtml = ratingBadge(s.rating);
+          var patronLabel = s.patron_info
+            ? esc(s.patron_info.patron_type) + (s.patron_info.patron_details ? ' <span style="color:#7f8c8d;font-size:.85em">— ' + esc(s.patron_info.patron_details) + '</span>' : '')
+            : esc(s.display_name || s.session_id.substring(0, 12));
           tr.innerHTML =
-            "<td>" + esc(s.display_name || s.session_id.substring(0, 12)) + "</td>" +
+            "<td>" + patronLabel + "</td>" +
             "<td>" + esc(s.handled_by) + "</td>" +
             "<td>" + fmtDate(s.created_at) + "</td>" +
             "<td>" + fmtDate(s.ended_at) + "</td>" +
@@ -2291,18 +2294,21 @@
             "<td>" + ratingHtml + "</td>" +
             '<td><button class="back-btn" style="padding:3px 10px;font-size:0.8em">View</button></td>';
           tr.querySelector("button").addEventListener("click", function() {
-            openLiveChatDetail(s.live_chat_id, s.display_name || s.session_id.substring(0, 12), s.handled_by, s.rating, s.ended_at);
+            openLiveChatDetail(s.live_chat_id, s.patron_info, s.display_name || s.session_id.substring(0, 12), s.handled_by, s.rating, s.ended_at);
           });
           lchTbody.appendChild(tr);
         });
       }
 
-      async function openLiveChatDetail(liveChatId, name, handledBy, rating, endedAt) {
+      async function openLiveChatDetail(liveChatId, patronInfo, name, handledBy, rating, endedAt) {
         lchTable.classList.add("hidden");
         lchTable.parentElement.querySelector(".pagination").classList.add("hidden");
         lchDetail.classList.remove("hidden");
+        var patronDisplay = patronInfo
+          ? esc(patronInfo.patron_type) + (patronInfo.patron_details ? " — " + esc(patronInfo.patron_details) : "")
+          : esc(name);
         document.getElementById("lch-detail-meta").innerHTML =
-          "<dt>Patron</dt><dd>" + esc(name) + "</dd>" +
+          "<dt>Patron</dt><dd>" + patronDisplay + "</dd>" +
           "<dt>Handled By</dt><dd>" + esc(handledBy || "—") + "</dd>" +
           "<dt>Ended</dt><dd>" + fmtDate(endedAt) + "</dd>" +
           "<dt>Patron Rating</dt><dd>" + ratingLabel(rating) + "</dd>";
@@ -2324,7 +2330,7 @@
             div.className = "message " + (isLibrarian ? "message-librarian" : "message-user");
             var label = isLibrarian
               ? "👩‍💼 " + esc(handledBy || "Librarian")
-              : "👤 " + esc(name || "Patron");
+              : "👤 " + (patronInfo ? esc(patronInfo.patron_type) : esc(name || "Patron"));
             div.innerHTML =
               '<div class="msg-meta">' + label + " — " + fmtDate(m.timestamp) + "</div>" +
               "<div>" + esc(m.content) + "</div>";
