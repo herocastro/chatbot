@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: koha-chatbot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SESSION_DB_PATH
+        value: /tmp/sessions.db
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    autoDeploy: true
