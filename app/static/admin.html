@@ -526,6 +526,10 @@
           <label for="li-d-content">Bot Reply</label>
           <p class="ai-hint">The answer shown to the patron. Leave blank to let the AI answer.<br>To add a clickable link, type: <code>[Link Text](https://url)</code> — e.g. <code>[Renewal Form](https://forms.google.com/...)</code></p>
           <textarea id="li-d-content" rows="6" placeholder="Type the answer here, or leave blank for AI to answer…" aria-label="FAQ content"></textarea>
+          <div id="li-d-preview-wrap" style="display:none;margin-top:8px;border:1px solid #e0e0e0;border-radius:6px;padding:10px 12px;background:#f9f9f9;font-size:0.88em;line-height:1.5;white-space:pre-wrap;word-break:break-word">
+            <div style="font-size:0.75em;color:#7f8c8d;margin-bottom:6px;font-weight:600">PREVIEW</div>
+            <div id="li-d-preview"></div>
+          </div>
         </div>
         <div class="li-drawer-field">
           <label for="li-d-image">Image <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
@@ -1692,6 +1696,8 @@
         document.getElementById("li-drawer-status").textContent = "";
         document.getElementById("li-drawer-overlay").classList.remove("hidden");
         document.getElementById("li-d-label").focus();
+        // Trigger preview update for existing content
+        document.getElementById("li-d-content").dispatchEvent(new Event("input"));
       }
 
       function closeDrawer() {
@@ -1707,6 +1713,29 @@
       document.getElementById("li-add-faq-btn").addEventListener("click", function() { openDrawer(-1); });
 
       // Image preview and upload
+      // Live preview for FAQ content — renders markdown links as the patron will see them
+      (function() {
+        var ta = document.getElementById("li-d-content");
+        var previewWrap = document.getElementById("li-d-preview-wrap");
+        var preview = document.getElementById("li-d-preview");
+        function updatePreview() {
+          var text = ta.value;
+          if (!text.trim()) { previewWrap.style.display = "none"; return; }
+          previewWrap.style.display = "block";
+          // Render markdown links same way the chat widget does
+          var html = text
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+              '<a href="$2" target="_blank" rel="noopener" style="color:#0E553F;text-decoration:underline">$1</a>')
+            .replace(/\n/g, "<br>");
+          preview.innerHTML = html;
+        }
+        ta.addEventListener("input", updatePreview);
+        // Also update when drawer opens
+        document.getElementById("li-add-faq-btn").addEventListener("click", function() {
+          setTimeout(updatePreview, 50);
+        });
+      })();
       function updateImagePreview(url) {
         var preview = document.getElementById("li-d-image-preview");
         var thumb = document.getElementById("li-d-image-thumb");
