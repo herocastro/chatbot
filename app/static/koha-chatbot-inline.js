@@ -540,15 +540,16 @@
 
   function setLibrarianButtonState(available, reason) {
     libBtnAvailable = available;
+    // Always keep the button enabled so it can be clicked to show the offline message.
+    // Visual state changes to indicate availability without blocking interaction.
+    libBtn.disabled = false;
     if (available) {
-      libBtn.disabled = false;
       libBtn.style.opacity = "1";
       libBtn.style.cursor = "pointer";
       libBtn.title = "";
     } else {
-      libBtn.disabled = true;
-      libBtn.style.opacity = "0.45";
-      libBtn.style.cursor = "not-allowed";
+      libBtn.style.opacity = "0.6";
+      libBtn.style.cursor = "pointer";
       libBtn.title = reason || "Librarian chat is currently unavailable.";
     }
   }
