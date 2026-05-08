@@ -524,7 +524,7 @@
         </div>
         <div class="li-drawer-field">
           <label for="li-d-content">Bot Reply</label>
-          <p class="ai-hint">The answer shown to the patron. Leave blank to let the AI answer. Use <code>[Link Text](https://url)</code> to add clickable links.</p>
+          <p class="ai-hint">The answer shown to the patron. Leave blank to let the AI answer. To add a link: select the text you want to make clickable, paste the URL below, then click Insert Link.</p>
           <textarea id="li-d-content" rows="6" placeholder="Type the answer here, or leave blank for AI to answer…" aria-label="FAQ content"></textarea>
           <div style="display:flex;gap:6px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
             <div style="flex:1;min-width:120px">
@@ -1717,16 +1717,17 @@
 
       document.getElementById("li-add-faq-btn").addEventListener("click", function() { openDrawer(-1); });
 
-      // Insert link helper — inserts [text](url) at cursor in the content textarea
+      // Insert link helper — wraps selected text as [text](url) or inserts at cursor
       document.getElementById("li-d-insert-link").addEventListener("click", function() {
-        var linkText = document.getElementById("li-d-link-text").value.trim();
         var linkUrl = document.getElementById("li-d-link-url").value.trim();
         if (!linkUrl) { document.getElementById("li-d-link-url").focus(); return; }
-        if (!linkText) linkText = linkUrl;
         var textarea = document.getElementById("li-d-content");
-        var insert = "[" + linkText + "](" + linkUrl + ")";
         var start = textarea.selectionStart;
         var end = textarea.selectionEnd;
+        var selected = textarea.value.substring(start, end).trim();
+        // Use selected text as link label, fall back to the link text field, then the URL
+        var linkText = selected || document.getElementById("li-d-link-text").value.trim() || linkUrl;
+        var insert = "[" + linkText + "](" + linkUrl + ")";
         textarea.value = textarea.value.substring(0, start) + insert + textarea.value.substring(end);
         textarea.selectionStart = textarea.selectionEnd = start + insert.length;
         textarea.focus();
