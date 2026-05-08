@@ -698,10 +698,23 @@
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
     if (!libBtnAvailable) {
-      // Outside library hours — show offline message in chat instead of silently blocking
+      // Outside library hours — fetch hours and show specific availability message
       var w = msgs.querySelector(".lc-w"); if (w) w.remove();
       var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
-      addMsg(AFTER_HOURS_MESSAGE, "b");
+      fetch(CHATBOT_API + "/api/librarian-available?t=" + Date.now())
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var hoursInfo = d.reason || "Please check back during library hours.";
+          var msg =
+            "Hello! Our librarians are currently offline. 🕐\n\n" +
+            hoursInfo + "\n\n" +
+            "Please note your questions and ask a librarian during active hours. " +
+            "In the meantime, I'm LLORA and I can still help you find books, check library hours, and answer general questions. 📚";
+          addMsg(msg, "b");
+        })
+        .catch(function() {
+          addMsg(AFTER_HOURS_MESSAGE, "b");
+        });
       return;
     }
     // Disable immediately to prevent double-click showing the form twice

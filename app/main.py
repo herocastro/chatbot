@@ -733,9 +733,20 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
 
     windows = hours.get(day_name, [])
     if not windows:
+        # Find next available day
+        days_order = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+        today_idx = days_order.index(day_name) if day_name in days_order else 0
+        next_day_str = ""
+        for i in range(1, 8):
+            next_day = days_order[(today_idx + i) % 7]
+            next_windows = hours.get(next_day, [])
+            if next_windows:
+                next_open = next_windows[0]["open"]
+                next_day_str = f" Librarians are next available on {next_day.capitalize()} at {next_open}."
+                break
         return {
             "available": False,
-            "reason": "The library is closed today.",
+            "reason": f"The library is closed today.{next_day_str}",
             "closes_at": None,
         }
 
@@ -757,7 +768,6 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
         cutoff_time = cutoff_dt.time()
 
         if open_time <= now_time < cutoff_time:
-            # Within hours and before cutoff — available
             close_str = window["close"]
             return {
                 "available": True,
@@ -765,7 +775,6 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
                 "closes_at": close_str,
             }
         elif cutoff_time <= now_time < close_time:
-            # Within the 30-min cutoff window
             close_str = window["close"]
             return {
                 "available": False,
@@ -775,11 +784,28 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
                 ),
                 "closes_at": close_str,
             }
+        elif now_time < open_time:
+            # Before opening today
+            return {
+                "available": False,
+                "reason": f"The library opens today at {window['open']}.",
+                "closes_at": None,
+            }
 
-    # Outside all windows for today
+    # After all windows for today — find next available day
+    days_order = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+    today_idx = days_order.index(day_name) if day_name in days_order else 0
+    next_day_str = ""
+    for i in range(1, 8):
+        next_day = days_order[(today_idx + i) % 7]
+        next_windows = hours.get(next_day, [])
+        if next_windows:
+            next_open = next_windows[0]["open"]
+            next_day_str = f" Librarians are next available on {next_day.capitalize()} at {next_open}."
+            break
     return {
         "available": False,
-        "reason": "The library is currently closed.",
+        "reason": f"The library is now closed for today.{next_day_str}",
         "closes_at": None,
     }
 
