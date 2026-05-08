@@ -228,10 +228,11 @@
 
   // Load AI config (name + welcome message) from server
   var AFTER_HOURS_MESSAGE = (
-    "Hello! Thank you for reaching out. I'm LLORA, your virtual assistant. " +
-    "Our team is currently offline. Please leave your questions or inquiries, " +
-    "and we'll get back to you as soon as we resume operations.\n\n" +
-    "Thank you for your patience and understanding! 🙏"
+    "Hello! Our librarians are currently offline. 🕐\n\n" +
+    "Please note your questions and bring them up during our active library hours — " +
+    "our team will be happy to assist you then!\n\n" +
+    "In the meantime, I'm LLORA, your AI assistant. I can still help you find books, " +
+    "check library hours, and answer general library questions. 📚"
   );
 
   fetch(CHATBOT_API + "/api/ai-config?t=" + Date.now())
