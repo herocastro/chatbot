@@ -229,10 +229,8 @@
   // Load AI config (name + welcome message) from server
   var AFTER_HOURS_MESSAGE = (
     "Hello! Our librarians are currently offline. 🕐\n\n" +
-    "Please note your questions and bring them up during our active library hours — " +
-    "our team will be happy to assist you then!\n\n" +
-    "In the meantime, I'm LLORA, your AI assistant. I can still help you find books, " +
-    "check library hours, and answer general library questions. 📚"
+    "Please note your questions and ask a librarian during active hours. " +
+    "In the meantime, I'm LLORA and I'll do my best to answer your questions. 📚"
   );
 
   fetch(CHATBOT_API + "/api/ai-config?t=" + Date.now())
@@ -709,7 +707,7 @@
             "Hello! Our librarians are currently offline. 🕐\n\n" +
             hoursInfo + "\n\n" +
             "Please note your questions and ask a librarian during active hours. " +
-            "In the meantime, I'm LLORA and I can still help you find books, check library hours, and answer general questions. 📚";
+            "In the meantime, I'm LLORA and I'll do my best to answer your questions. 📚";
           addMsg(msg, "b");
         })
         .catch(function() {

@@ -718,6 +718,17 @@ def _get_library_hours() -> dict:
     return _DEFAULT_LIBRARY_HOURS
 
 
+def _fmt_time(t: str) -> str:
+    """Convert HH:MM 24h string to 12h AM/PM format, e.g. '08:30' → '8:30 AM'."""
+    try:
+        h, m = map(int, t.split(":"))
+        period = "AM" if h < 12 else "PM"
+        h12 = h % 12 or 12
+        return f"{h12}:{m:02d} {period}"
+    except Exception:
+        return t
+
+
 def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
     """Check whether the librarian button should be enabled right now.
 
@@ -741,7 +752,7 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
             next_day = days_order[(today_idx + i) % 7]
             next_windows = hours.get(next_day, [])
             if next_windows:
-                next_open = next_windows[0]["open"]
+                next_open = _fmt_time(next_windows[0]["open"])
                 next_day_str = f" Librarians are next available on {next_day.capitalize()} at {next_open}."
                 break
         return {
@@ -768,27 +779,26 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
         cutoff_time = cutoff_dt.time()
 
         if open_time <= now_time < cutoff_time:
-            close_str = window["close"]
+            close_str = _fmt_time(window["close"])
             return {
                 "available": True,
                 "reason": f"Librarians are available until {close_str}.",
-                "closes_at": close_str,
+                "closes_at": window["close"],
             }
         elif cutoff_time <= now_time < close_time:
-            close_str = window["close"]
+            close_str = _fmt_time(window["close"])
             return {
                 "available": False,
                 "reason": (
                     f"The library closes at {close_str}. "
                     f"The librarian chat is disabled {cutoff_minutes} minutes before closing."
                 ),
-                "closes_at": close_str,
+                "closes_at": window["close"],
             }
         elif now_time < open_time:
-            # Before opening today
             return {
                 "available": False,
-                "reason": f"The library opens today at {window['open']}.",
+                "reason": f"The library opens today at {_fmt_time(window['open'])}.",
                 "closes_at": None,
             }
 
@@ -800,7 +810,7 @@ def _check_librarian_available(hours: dict, cutoff_minutes: int = 30) -> dict:
         next_day = days_order[(today_idx + i) % 7]
         next_windows = hours.get(next_day, [])
         if next_windows:
-            next_open = next_windows[0]["open"]
+            next_open = _fmt_time(next_windows[0]["open"])
             next_day_str = f" Librarians are next available on {next_day.capitalize()} at {next_open}."
             break
     return {
