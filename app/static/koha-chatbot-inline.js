@@ -599,8 +599,8 @@
     { label: "🎓 Student (Higher Ed)",   value: "Student (Higher Ed)",   prompt: "Please enter your Course & Year (e.g. BSIT 3rd Year):" },
     { label: "📚 Student (Basic Ed)",    value: "Student (Basic Ed)",    prompt: "Please enter your Grade & Section (e.g. Grade 10 - Rizal):" },
     { label: "👩‍🏫 Faculty / Staff",       value: "Faculty / Staff",       prompt: "Please enter your Department (e.g. College of Engineering):" },
-    { label: "🏛️ Alumni",               value: "Alumni",                prompt: "Please enter your name:" },
-    { label: "🙋 Visitor",              value: "Visitor",               prompt: "Please enter your name:" },
+    { label: "🏛️ Alumni",               value: "Alumni",                anonymous: true },
+    { label: "🙋 Visitor",              value: "Visitor",               anonymous: true },
   ];
 
   function showPatronTypeStep() {
@@ -622,7 +622,7 @@
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">' +
       _PATRON_TYPES.map(function(t) {
-        return '<button class="lc-patron-type-btn" data-value="' + t.value + '" data-prompt="' + t.prompt.replace(/"/g, "&quot;") + '" ' +
+        return '<button class="lc-patron-type-btn" data-value="' + t.value + '" data-prompt="' + (t.prompt || "").replace(/"/g, "&quot;") + '" data-anonymous="' + (t.anonymous ? "true" : "false") + '" ' +
           'style="background:#fff;border:1px solid #D4A017;color:#0E553F;border-radius:14px;' +
           'padding:8px 14px;font-size:.82rem;cursor:pointer;text-align:left;transition:all .15s">' +
           t.label + '</button>';
@@ -636,10 +636,25 @@
       b.addEventListener("click", function() {
         _patronType = b.getAttribute("data-value");
         var prompt = b.getAttribute("data-prompt");
+        var anonymous = b.getAttribute("data-anonymous") === "true";
         // Show user's choice as a visual bubble only — don't save to chatHistory
-        // so it doesn't duplicate on page reload
         addMsgRaw(_patronType, "u");
-        showPatronDetailsStep(prompt);
+        if (anonymous) {
+          // Skip details step — remove form and go straight to handoff
+          var f = document.getElementById("lc-patron-form");
+          if (f) f.remove();
+          _patronDetails = "";
+          fetch(CHATBOT_API + "/api/patron-info", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: "" })
+          }).catch(function() {});
+          inp.value = "Ask a librarian";
+          btn.disabled = false;
+          send();
+        } else {
+          showPatronDetailsStep(prompt);
+        }
       });
     });
   }
