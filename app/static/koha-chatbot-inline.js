@@ -325,10 +325,15 @@
     }
     // Only render text if there is text content
     if (t && t.trim()) {
-      var html = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-        '<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$1</a>');
-      html = html.replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g,
-        '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer">$2</a>');
+      var html = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      // Render markdown links [text](url) — only for http/https URLs
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+        '<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer" target="_blank" rel="noopener">$1</a>');
+      // Render bare URLs
+      html = html.replace(/(^|[^"'=])(https?:\/\/[^\s<&]+)/g,
+        '$1<a href="$2" class="lc-link" style="color:inherit;text-decoration:underline;cursor:pointer" target="_blank" rel="noopener">$2</a>');
+      // Preserve line breaks
+      html = html.replace(/\n/g, "<br>");
       d.innerHTML = html;
     }
     // Render image if provided
