@@ -129,10 +129,9 @@
   document.head.appendChild(css);
 
   // Avatar URL — DiceBear avataaars, librarian style matching green/gold theme
-  var AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=LLORA&backgroundColor=0E553F" +
-    "&accessories=prescription02&accessoriesColor=D4A017&clothesColor=0E553F" +
-    "&top=longHairStraight&hairColor=brown&facialHairType=blank" +
-    "&eyes=happy&eyebrow=default&mouth=smile&skin=light";
+  var AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=LLORA&backgroundColor=0e553f" +
+    "&top=straight01&accessories=prescription02&eyes=happy" +
+    "&eyebrows=default&mouth=smile&clothing=blazerAndShirt&style=circle";
 
   // FAB
   var fab = document.createElement("button");
