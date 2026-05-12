@@ -226,7 +226,7 @@
     tryFetch();
   }
 
-  // Load FAQs into the initial welcome screen
+  // Load FAQs into the initial welcome screen, but keep hidden until identity is done
   var initFaqContainer = document.getElementById("lc-faqs-init");
   if (initFaqContainer) loadAndRenderFaqs(initFaqContainer);
 
@@ -627,6 +627,11 @@
       body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
     }).catch(function() {});
     saveState();
+    // Reveal the welcome message and FAQs now that identity is set
+    var wEl = msgs.querySelector(".lc-w");
+    if (wEl) wEl.style.display = "";
+    var fqEl = msgs.querySelector(".lc-faqs");
+    if (fqEl) fqEl.style.display = "";
     _unlockChat();
     inp.focus();
   }
@@ -720,6 +725,11 @@
   var _identityDone = !!_patronType;
   if (!_identityDone) {
     _lockChat();
+    // Hide welcome message and FAQs until identity is complete
+    var _initWel = msgs.querySelector(".lc-w");
+    if (_initWel) _initWel.style.display = "none";
+    var _initFaq = msgs.querySelector(".lc-faqs");
+    if (_initFaq) _initFaq.style.display = "none";
     // If the chat is already open on load, show the form immediately
     if (wasOpen) {
       showPatronTypeStep();
@@ -809,8 +819,8 @@
           return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
         });
     msgs.innerHTML =
-      '<div class="lc-w">Hi! 👋 I\'m LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?</div>' +
-      '<div class="lc-faqs" id="lc-faqs-reset"></div>';
+      '<div class="lc-w" style="display:none">Hi! 👋 I\'m LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?</div>' +
+      '<div class="lc-faqs" id="lc-faqs-reset" style="display:none"></div>';
     var resetFaqContainer = document.getElementById("lc-faqs-reset");
     if (resetFaqContainer) loadAndRenderFaqs(resetFaqContainer);
     // Lock and show identity form for the new session
