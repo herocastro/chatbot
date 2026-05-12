@@ -224,9 +224,9 @@
     tryFetch();
   }
 
-  // Load FAQs into the initial welcome screen
+  // Load FAQs into the initial welcome screen — only called after identification
   var initFaqContainer = document.getElementById("lc-faqs-init");
-  if (initFaqContainer) loadAndRenderFaqs(initFaqContainer);
+  // FAQs are loaded after identification is confirmed (see showIdentificationForm / onIdentified)
 
   // Load AI config (name + welcome message) from server
   var AFTER_HOURS_MESSAGE = (
@@ -234,6 +234,7 @@
     "Please note your questions and ask a librarian during active hours. " +
     "In the meantime, I'm LLORA and I'll do my best to answer your questions. 📚"
   );
+  var _resolvedWelcome = "Hi! 👋 I'm LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?";
 
   fetch(CHATBOT_API + "/api/ai-config?t=" + Date.now())
     .then(function(r) { return r.json(); })
@@ -252,8 +253,11 @@
         });
       }
       // Always show normal welcome + FAQs regardless of library hours
+      // .lc-w may not exist yet if identification hasn't completed — store for later
       var wEl = msgs.querySelector(".lc-w");
       if (wEl) wEl.textContent = welcome;
+      // Store the resolved welcome text so onIdentified() can use it
+      _resolvedWelcome = welcome;
     })
     .catch(function() {});
 
@@ -266,6 +270,52 @@
       if (m.cls === "b" && m.text && m.text.indexOf("👩‍💼 Librarian:") === 0) return;
       addMsgRaw(m.text, m.cls, m.ts, m.imgUrl || null);
     });
+  }
+
+  // Called once identification is complete (or already done from session storage).
+  // Shows the welcome screen + FAQs and enables the input bar.
+  function onIdentified() {
+    _patronIdentified = true;
+    saveState();
+    // Enable input bar
+    inp.disabled = false;
+    inp.placeholder = "Ask me about the library...";
+    btn.disabled = !inp.value.trim();
+    // If no chat history yet, show welcome + FAQs
+    if (chatHistory.length === 0) {
+      msgs.innerHTML =
+        '<div class="lc-w"></div>' +
+        '<div class="lc-faqs" id="lc-faqs-init"></div>';
+      var wEl = msgs.querySelector(".lc-w");
+      if (wEl) wEl.textContent = _resolvedWelcome;
+      var faqContainer = document.getElementById("lc-faqs-init");
+      if (faqContainer) loadAndRenderFaqs(faqContainer);
+    }
+  }
+
+  // Show identification form immediately — replaces welcome message.
+  // Input bar stays disabled until identification is complete.
+  function showIdentificationForm() {
+    inp.disabled = true;
+    inp.placeholder = "Please identify yourself first…";
+    btn.disabled = true;
+    // Clear welcome/FAQs and show the form directly in the message area
+    msgs.innerHTML = "";
+    showPatronTypeStep(function() {
+      onIdentified();
+    }, false);
+  }
+
+  // On init: if not yet identified, show the form immediately.
+  // If already identified (session restored), go straight to normal chat.
+  if (!_patronIdentified) {
+    showIdentificationForm();
+  } else {
+    // Already identified — load FAQs if no history
+    if (chatHistory.length === 0) {
+      var initFaqEl = document.getElementById("lc-faqs-init");
+      if (initFaqEl) loadAndRenderFaqs(initFaqEl);
+    }
   }
 
   // Check if the existing session has expired — auto-reset to new chat
@@ -791,17 +841,15 @@
           var r = (Math.random() * 16) | 0;
           return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
         });
-    msgs.innerHTML =
-      '<div class="lc-w">Hi! 👋 I\'m LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?</div>' +
-      '<div class="lc-faqs" id="lc-faqs-reset"></div>';
-    var resetFaqContainer = document.getElementById("lc-faqs-reset");
-    if (resetFaqContainer) loadAndRenderFaqs(resetFaqContainer);
+    msgs.innerHTML = "";
     inp.disabled = false;
     inp.placeholder = "Type your message…";
     btn.disabled = false;
     // Re-check librarian availability after reset
     checkLibrarianAvailability();
     saveState();
+    // Show identification form for the new session
+    showIdentificationForm();
   }
 
   document.getElementById("lc-new").addEventListener("click", function () {
@@ -829,21 +877,6 @@
   function send() {
     var text = inp.value.trim();
     if (!text) return;
-
-    // If patron hasn't identified yet, show the identification form first.
-    // Store the pending message and resume after identification is complete.
-    if (!_patronIdentified && !handoffActive) {
-      var pendingText = text;
-      inp.value = "";
-      btn.disabled = true;
-      showPatronTypeStep(function() {
-        // Identification done — now send the original message
-        inp.value = pendingText;
-        btn.disabled = false;
-        send();
-      }, false /* not forHandoff */);
-      return;
-    }
 
     resetInactivityTimer();
     var w = msgs.querySelector(".lc-w"); if (w) w.remove();
