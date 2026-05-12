@@ -31,11 +31,15 @@
   var css = document.createElement("style");
   css.textContent =
     "#lc-fab{position:fixed;bottom:24px;right:24px;z-index:100000;" +
-    "width:56px;height:56px;border-radius:50%;background:#0E553F;color:#fff;" +
-    "border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);" +
+    "width:60px;height:60px;border-radius:50%;background:#0E553F;color:#fff;" +
+    "border:3px solid #D4A017;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3);" +
     "font-size:28px;display:flex;align-items:center;justify-content:center;" +
-    "transition:transform .2s,background .2s}" +
+    "transition:transform .2s,background .2s;overflow:hidden;padding:0}" +
     "#lc-fab:hover{background:#0a3f2e;transform:scale(1.08)}" +
+    "#lc-fab-avatar{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}" +
+    "#lc-fab-close{font-size:22px;color:#fff;line-height:1;display:none}" +
+    "#lc-fab.open #lc-fab-avatar{display:none}" +
+    "#lc-fab.open #lc-fab-close{display:block}" +
     "#lc-wrap{position:fixed;bottom:92px;right:24px;z-index:99999;" +
     "width:400px;height:560px;max-width:calc(100vw - 32px);" +
     "max-height:calc(100vh - 120px);border-radius:12px;overflow:hidden;" +
@@ -43,9 +47,11 @@
     "flex-direction:column;font-family:-apple-system,BlinkMacSystemFont," +
     "'Segoe UI',Roboto,Helvetica,Arial,sans-serif}" +
     "#lc-wrap.open{display:flex}" +
-    "#lc-hdr{background:#0E553F;color:#fff;padding:14px 18px;" +
+    "#lc-hdr{background:#0E553F;color:#fff;padding:10px 14px;" +
     "font-size:1.05rem;font-weight:600;display:flex;align-items:center;" +
     "gap:10px;flex-shrink:0}" +
+    "#lc-hdr-avatar{width:38px;height:38px;border-radius:50%;border:2px solid #D4A017;" +
+    "object-fit:cover;flex-shrink:0;background:#0a3f2e}" +
     "#lc-new{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;" +
     "border-radius:14px;padding:4px 12px;font-size:.75rem;cursor:pointer;" +
     "margin-left:auto;transition:background .15s}" +
@@ -122,11 +128,19 @@
     "#lc-fab{bottom:16px;right:16px}}";
   document.head.appendChild(css);
 
+  // Avatar URL — DiceBear avataaars, librarian style matching green/gold theme
+  var AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=LLORA&backgroundColor=0E553F" +
+    "&accessories=prescription02&accessoriesColor=D4A017&clothesColor=0E553F" +
+    "&top=longHairStraight&hairColor=brown&facialHairType=blank" +
+    "&eyes=happy&eyebrow=default&mouth=smile&skin=light";
+
   // FAB
   var fab = document.createElement("button");
   fab.id = "lc-fab";
   fab.setAttribute("aria-label", "Open library chat assistant");
-  fab.innerHTML = "&#128218;";
+  fab.innerHTML =
+    '<img id="lc-fab-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" />' +
+    '<span id="lc-fab-close" aria-hidden="true">&#10005;</span>';
   document.body.appendChild(fab);
 
   // Chat panel
@@ -135,7 +149,7 @@
   wrap.setAttribute("role", "dialog");
   wrap.setAttribute("aria-label", "Library chat assistant");
   wrap.innerHTML =
-    '<div id="lc-hdr"><span aria-hidden="true">&#128218;</span> LLORA — Library Assistant<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
+    '<div id="lc-hdr"><img id="lc-hdr-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" /> LLORA — Library Assistant<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
     '<div id="lc-msgs" role="log" aria-live="polite">' +
     '<div class="lc-w">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
     '<div class="lc-faqs" id="lc-faqs-init">' +
@@ -247,10 +261,11 @@
       // Update header
       var hdr = document.getElementById("lc-hdr");
       if (hdr) {
-        var span = hdr.querySelector("span[aria-hidden]");
-        if (span) span.nextSibling && (span.nextSibling.textContent = " " + name + " — Library Assistant");
+        // Update the text node that follows the avatar image
         hdr.childNodes.forEach(function(n) {
-          if (n.nodeType === 3) n.textContent = " " + name + " — Library Assistant";
+          if (n.nodeType === 3 && n.textContent.trim()) {
+            n.textContent = " " + name + " — Library Assistant";
+          }
         });
       }
       // Always show normal welcome + FAQs regardless of library hours
@@ -286,7 +301,7 @@
   var open = wasOpen;
   if (open) {
     wrap.classList.add("open");
-    fab.innerHTML = "&#10005;";
+    fab.classList.add("open");
     fab.setAttribute("aria-label", "Close chat");
   }
 
@@ -302,7 +317,7 @@
   fab.addEventListener("click", function () {
     open = !open;
     wrap.classList.toggle("open", open);
-    fab.innerHTML = open ? "&#10005;" : "&#128218;";
+    fab.classList.toggle("open", open);
     fab.setAttribute("aria-label", open ? "Close chat" : "Open library chat assistant");
     if (open) {
       // Show identity form on first open if not yet identified
@@ -320,7 +335,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && open) {
       open = false; wrap.classList.remove("open");
-      fab.innerHTML = "&#128218;";
+      fab.classList.remove("open");
       fab.setAttribute("aria-label", "Open library chat assistant");
       fab.focus();
     }
