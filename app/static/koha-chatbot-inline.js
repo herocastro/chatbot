@@ -667,8 +667,7 @@
         _patronType = b.getAttribute("data-value");
         var prompt = b.getAttribute("data-prompt");
         var anonymous = b.getAttribute("data-anonymous") === "true";
-        // Show user's choice as a visual bubble
-        addMsgRaw(_patronType, "u");
+        // Don't render as a chat bubble — just remove the form and proceed
         if (anonymous) {
           _patronDetails = "";
           var f = document.getElementById("lc-patron-form");
@@ -709,7 +708,7 @@
       var val = detailInput.value.trim();
       if (!val) { detailInput.style.borderColor = "#e74c3c"; return; }
       _patronDetails = val;
-      addMsgRaw(_patronDetails, "u");
+      // Don't render as a chat bubble — just remove the form and proceed
       var f = document.getElementById("lc-patron-form");
       if (f) f.remove();
       _onIdentityComplete();
