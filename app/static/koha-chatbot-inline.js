@@ -167,11 +167,13 @@
       }));
   var chatHistory = stored.history || []; // [{text, cls}]
   var wasOpen = stored.open !== undefined ? stored.open : true;
-
   function saveState() {
     try {
       sessionStorage.setItem(STORE_KEY, JSON.stringify({
-        ver: STORE_VER, sid: sid, history: chatHistory.slice(-40), open: open
+        ver: STORE_VER, sid: sid, history: chatHistory.slice(-40), open: open,
+        patronIdentified: _patronIdentified,
+        patronType: _patronType,
+        patronDetails: _patronDetails
       }));
     } catch(e) {}
   }
@@ -577,9 +579,10 @@
   checkLibrarianAvailability();
   setInterval(checkLibrarianAvailability, 60000);
 
-  // --- Patron identity form (shown before handoff) ---
-  var _patronType = "";
-  var _patronDetails = "";
+  // --- Patron identity form (shown before first AI chat AND before handoff) ---
+  var _patronType = stored.patronType || "";
+  var _patronDetails = stored.patronDetails || "";
+  var _patronIdentified = stored.patronIdentified || false; // true once the patron has completed identification
 
   var _PATRON_TYPES = [
     { label: "🎓 Student (Higher Ed)",   value: "Student (Higher Ed)",   prompt: "Please enter your Course & Year (e.g. BSIT 3rd Year):" },
@@ -589,13 +592,20 @@
     { label: "🙋 Visitor",              value: "Visitor",               anonymous: true },
   ];
 
-  function showPatronTypeStep() {
+  // onComplete(patronType, patronDetails) is called after identification is done.
+  // When forHandoff=true the prompt text says "before connecting to a librarian",
+  // otherwise it says "before you start chatting".
+  function showPatronTypeStep(onComplete, forHandoff) {
     // Remove any existing identity form
     var old = document.getElementById("lc-patron-form");
     if (old) old.remove();
 
     var w = msgs.querySelector(".lc-w"); if (w) w.remove();
     var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
+
+    var introText = forHandoff
+      ? "Hello! 👋 Before connecting you to a librarian, please tell us who you are:"
+      : "Hello! 👋 Before you start chatting, please tell us who you are:";
 
     // Bot message asking for type
     var botMsg = document.createElement("div");
@@ -604,7 +614,7 @@
     botMsg.style.cssText = "max-width:90%;white-space:normal";
     botMsg.innerHTML =
       '<div style="margin-bottom:10px;font-size:.9em;line-height:1.5">' +
-      'Hello! 👋 Before connecting you to a librarian, please tell us who you are:' +
+      introText +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">' +
       _PATRON_TYPES.map(function(t) {
@@ -626,26 +636,25 @@
         // Show user's choice as a visual bubble only — don't save to chatHistory
         addMsgRaw(_patronType, "u");
         if (anonymous) {
-          // Skip details step — remove form and go straight to handoff
+          // Skip details step — remove form and proceed
           var f = document.getElementById("lc-patron-form");
           if (f) f.remove();
           _patronDetails = "";
+          _patronIdentified = true;
           fetch(CHATBOT_API + "/api/patron-info", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: "" })
           }).catch(function() {});
-          inp.value = "Ask a librarian";
-          btn.disabled = false;
-          send();
+          if (onComplete) onComplete(_patronType, "");
         } else {
-          showPatronDetailsStep(prompt);
+          showPatronDetailsStep(prompt, onComplete);
         }
       });
     });
   }
 
-  function showPatronDetailsStep(prompt) {
+  function showPatronDetailsStep(prompt, onComplete) {
     // Remove the type selection form
     var old = document.getElementById("lc-patron-form");
     if (old) old.remove();
@@ -680,16 +689,14 @@
       // Remove form
       var f = document.getElementById("lc-patron-form");
       if (f) f.remove();
-      // Save to server then trigger handoff
+      _patronIdentified = true;
+      // Save to server
       fetch(CHATBOT_API + "/api/patron-info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
       }).catch(function() {});
-      // Now trigger the actual handoff
-      inp.value = "Ask a librarian";
-      btn.disabled = false;
-      send();
+      if (onComplete) onComplete(_patronType, _patronDetails);
     }
 
     detailBtn.addEventListener("click", submitDetails);
@@ -720,10 +727,22 @@
         });
       return;
     }
-    // Disable immediately to prevent double-click showing the form twice
+    // Disable immediately to prevent double-click
     libBtn.disabled = true;
     libBtn.style.opacity = "0.45";
-    showPatronTypeStep();
+    if (_patronIdentified) {
+      // Already identified — go straight to handoff
+      inp.value = "Ask a librarian";
+      btn.disabled = false;
+      send();
+    } else {
+      // Show identification form first, then trigger handoff on completion
+      showPatronTypeStep(function() {
+        inp.value = "Ask a librarian";
+        btn.disabled = false;
+        send();
+      }, true /* forHandoff */);
+    }
   });
 
   // --- 5-minute inactivity timer ---
@@ -762,6 +781,9 @@
     ratingShown = false;
     _joinedMsgShown = false;
     returnToBot._done = false;
+    _patronIdentified = false;
+    _patronType = "";
+    _patronDetails = "";
     chatHistory.length = 0;
     sid = (typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -807,6 +829,22 @@
   function send() {
     var text = inp.value.trim();
     if (!text) return;
+
+    // If patron hasn't identified yet, show the identification form first.
+    // Store the pending message and resume after identification is complete.
+    if (!_patronIdentified && !handoffActive) {
+      var pendingText = text;
+      inp.value = "";
+      btn.disabled = true;
+      showPatronTypeStep(function() {
+        // Identification done — now send the original message
+        inp.value = pendingText;
+        btn.disabled = false;
+        send();
+      }, false /* not forHandoff */);
+      return;
+    }
+
     resetInactivityTimer();
     var w = msgs.querySelector(".lc-w"); if (w) w.remove();
     var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
