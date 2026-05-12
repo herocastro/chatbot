@@ -30,6 +30,13 @@ DEFAULT_WELCOME_MESSAGE = (
 
 SETTINGS_KEY = "ai_settings_json"
 
+# Old welcome messages that should be migrated to the new default
+_LEGACY_WELCOME_MESSAGES = [
+    "Hi! 👋 I'm {name}, your virtual library assistant. "
+    "I can help you find books, check hours, or answer questions about the library. "
+    "What can I do for you?",
+]
+
 
 class AiSettings:
     """Holds the current AI personality configuration."""
@@ -85,6 +92,11 @@ def load_ai_settings(staff_store) -> AiSettings:
         raw = staff_store.get_setting(SETTINGS_KEY)
         if raw:
             data = json.loads(raw)
+            # Migrate legacy welcome messages to the new default
+            saved_welcome = data.get("welcome_message", "").strip()
+            if saved_welcome in [m.strip() for m in _LEGACY_WELCOME_MESSAGES]:
+                data["welcome_message"] = DEFAULT_WELCOME_MESSAGE
+                save_ai_settings(staff_store, AiSettings.from_dict(data))
             return AiSettings.from_dict(data)
     except Exception:
         logger.warning("Failed to load AI settings from DB, using defaults")
