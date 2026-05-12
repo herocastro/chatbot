@@ -555,6 +555,9 @@
 
   function setLibrarianButtonState(available, reason) {
     libBtnAvailable = available;
+    // Don't touch the button if the identity form is still pending
+    // (_patronType is empty until the patron completes the form)
+    if (!_patronType) return;
     // Always keep the button enabled so it can be clicked to show the offline message.
     // Visual state changes to indicate availability without blocking interaction.
     libBtn.disabled = false;
