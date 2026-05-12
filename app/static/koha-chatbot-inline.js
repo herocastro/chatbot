@@ -627,11 +627,20 @@
       body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
     }).catch(function() {});
     saveState();
+    // Show a subtle identity badge so the user knows what info was recorded
+    var badge = document.createElement("div");
+    badge.id = "lc-identity-badge";
+    badge.style.cssText = "align-self:center;font-size:.75rem;color:#666;background:#f0f0ec;" +
+      "border:1px solid #ddd;border-radius:20px;padding:4px 12px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%";
+    var label = "👤 " + _patronType + (_patronDetails ? " — " + _patronDetails : "");
+    badge.textContent = label;
+    msgs.appendChild(badge);
     // Reveal the welcome message and FAQs now that identity is set
     var wEl = msgs.querySelector(".lc-w");
     if (wEl) wEl.style.display = "";
     var fqEl = msgs.querySelector(".lc-faqs");
     if (fqEl) fqEl.style.display = "";
+    scroll();
     _unlockChat();
     inp.focus();
   }
