@@ -370,27 +370,11 @@
       }
       var imgWrap = document.createElement("div");
       imgWrap.className = "lc-img-wrap";
-      // Always show a clickable link first (guaranteed visible)
-      var imgLink = document.createElement("a");
-      imgLink.href = resolvedImgUrl;
-      imgLink.target = "_blank";
-      imgLink.rel = "noopener";
-      imgLink.textContent = "View image";
-      imgLink.className = "lc-img-link";
-      imgLink.addEventListener("click", function(e) { e.stopPropagation(); });
-      imgWrap.appendChild(imgLink);
-      // Also try to render inline
+      // Render inline — clicking opens full size in new tab
       var img = document.createElement("img");
       img.alt = "Reply image";
-      img.addEventListener("load", function() {
-        // Image loaded — hide the text link since image is visible
-        imgLink.style.display = "none";
-        scroll();
-      });
-      img.addEventListener("error", function() {
-        // Image failed — keep the text link, hide broken img
-        img.style.display = "none";
-      });
+      img.addEventListener("load", function() { scroll(); });
+      img.addEventListener("error", function() { img.style.display = "none"; });
       img.addEventListener("click", function() { window.open(resolvedImgUrl, "_blank"); });
       img.src = resolvedImgUrl;
       imgWrap.appendChild(img);
