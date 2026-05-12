@@ -648,7 +648,7 @@
     botMsg.style.cssText = "max-width:90%;white-space:normal";
     botMsg.innerHTML =
       '<div style="margin-bottom:10px;font-size:.9em;line-height:1.5">' +
-      'Hello! 👋 Before we begin, please tell us who you are:' +
+      'To assist you better, please provide the following details:' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">' +
       _PATRON_TYPES.map(function(t) {
