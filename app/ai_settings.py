@@ -24,9 +24,8 @@ DEFAULT_LIMITATIONS = (
     "Never reveal that you are an AI or language model."
 )
 DEFAULT_WELCOME_MESSAGE = (
-    "Hi! 👋 I'm {name}, your virtual library assistant. "
-    "I can help you find books, check hours, or answer questions about the library. "
-    "What can I do for you?"
+    "Hello, I'm {name} (Lorma Library Online Research Assistant), your virtual assistant. "
+    "I'm here to provide the assistance you need. I'll be happy to serve you."
 )
 
 SETTINGS_KEY = "ai_settings_json"
@@ -58,7 +57,15 @@ class AiSettings:
 
     def get_welcome_text(self) -> str:
         """Return the welcome message with the AI name substituted."""
-        return self.welcome_message.replace("{name}", self.name)
+        msg = self.welcome_message
+        # If the DB still has the old default message, transparently upgrade to the new one
+        _old_defaults = [
+            "Hi! 👋 I'm {name}, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?",
+            "Hi! \U0001f44b I'm {name}, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?",
+        ]
+        if any(msg.strip() == old.strip() for old in _old_defaults):
+            msg = DEFAULT_WELCOME_MESSAGE
+        return msg.replace("{name}", self.name)
 
     def to_dict(self) -> dict:
         return {
