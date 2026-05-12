@@ -58,6 +58,13 @@
     "border-bottom-right-radius:4px}" +
     ".lc-m.b{align-self:flex-start;background:#f0f0ec;color:#2d2d2d;" +
     "border-bottom-left-radius:4px}" +
+    // Bot message row (avatar + bubble)
+    ".lc-bot-row{display:flex;align-items:flex-end;gap:8px;align-self:flex-start;max-width:88%}" +
+    ".lc-avatar{width:32px;height:32px;border-radius:50%;background:#0E553F;" +
+    "color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;" +
+    "justify-content:center;flex-shrink:0;letter-spacing:.5px;user-select:none;" +
+    "box-shadow:0 1px 4px rgba(0,0,0,.18)}" +
+    ".lc-bot-row .lc-m.b{align-self:unset;max-width:100%}" +
     ".lc-m img{display:block;max-width:100%;height:auto;border-radius:8px;" +
     "margin-top:8px;cursor:pointer}" +
     ".lc-img-wrap{margin-top:8px;width:100%;overflow:hidden}" +
@@ -70,7 +77,7 @@
     ".lc-rate-btn:hover{border-color:#0E553F;background:#f0fdf4}" +
     ".lc-m.e{align-self:center;background:#fce4e4;color:#a94442;" +
     "border-radius:8px;font-size:.85rem;text-align:center}" +
-    ".lc-t{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:10px 14px;" +
+    ".lc-t{display:flex;align-items:center;gap:8px;padding:10px 14px;" +
     "background:#f0f0ec;border-radius:16px;border-bottom-left-radius:4px;color:#888;font-size:.82rem}" +
     ".lc-spinner{width:18px;height:18px;border:2.5px solid #ddd;border-top-color:#D4A017;" +
     "border-radius:50%;animation:lcSpin .7s linear infinite}" +
@@ -135,7 +142,7 @@
   wrap.setAttribute("role", "dialog");
   wrap.setAttribute("aria-label", "Library chat assistant");
   wrap.innerHTML =
-    '<div id="lc-hdr"><span aria-hidden="true">&#128218;</span> LLORA — Library Assistant<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
+    '<div id="lc-hdr"><div id="lc-hdr-avatar" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.25);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.5px;border:2px solid rgba(255,255,255,0.5)">LO</div><div style="display:flex;flex-direction:column;line-height:1.2"><span style="font-size:1rem;font-weight:700">LLORA</span><span style="font-size:.7rem;font-weight:400;opacity:.85">Library Assistant · Online</span></div><button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
     '<div id="lc-msgs" role="log" aria-live="polite">' +
     '<div class="lc-w">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
     '<div class="lc-faqs" id="lc-faqs-init">' +
@@ -150,6 +157,9 @@
   var msgs = document.getElementById("lc-msgs");
   var inp = document.getElementById("lc-in");
   var btn = document.getElementById("lc-go");
+
+  // Avatar initials — updated when AI config loads
+  var _botAvatarInitials = "LO";
 
   // Session — persist across page navigations
   var STORE_KEY = "lc_chat";
@@ -244,14 +254,18 @@
       var welcome = d.welcome_message || ("Hello, I'm " + name + " (Lorma Library Online Research Assistant), your virtual assistant. I'm here to provide the assistance you need. I'll be happy to serve you.");
       // Replace LLORA placeholder in after-hours message with actual bot name
       AFTER_HOURS_MESSAGE = AFTER_HOURS_MESSAGE.replace("LLORA", name);
-      // Update header
+      // Compute avatar initials from name (up to 2 chars)
+      var words = name.trim().split(/\s+/);
+      _botAvatarInitials = words.length >= 2
+        ? (words[0][0] + words[1][0]).toUpperCase()
+        : name.substring(0, 2).toUpperCase();
+      // Update header avatar + name
+      var hdrAvatar = document.getElementById("lc-hdr-avatar");
+      if (hdrAvatar) hdrAvatar.textContent = _botAvatarInitials;
       var hdr = document.getElementById("lc-hdr");
       if (hdr) {
-        var span = hdr.querySelector("span[aria-hidden]");
-        if (span) span.nextSibling && (span.nextSibling.textContent = " " + name + " — Library Assistant");
-        hdr.childNodes.forEach(function(n) {
-          if (n.nodeType === 3) n.textContent = " " + name + " — Library Assistant";
-        });
+        var nameEl = hdr.querySelector("span");
+        if (nameEl) nameEl.textContent = name;
       }
       // Always show normal welcome + FAQs regardless of library hours
       var wEl = msgs.querySelector(".lc-w");
@@ -328,6 +342,17 @@
 
   // Helpers
   function scroll() { msgs.scrollTop = msgs.scrollHeight; }
+  function _makeBotRow(bubble) {
+    var row = document.createElement("div");
+    row.className = "lc-bot-row";
+    var av = document.createElement("div");
+    av.className = "lc-avatar";
+    av.setAttribute("aria-hidden", "true");
+    av.textContent = _botAvatarInitials;
+    row.appendChild(av);
+    row.appendChild(bubble);
+    return row;
+  }
   function renderMsg(t, c, ts, imgUrl) {
     var d = document.createElement("div"); d.className = "lc-m " + c;
     // Check if this is a catalog result message — render as cards
@@ -389,7 +414,7 @@
         window.location.href = a.href;
       });
     });
-    return d;
+    return c === "b" ? _makeBotRow(d) : d;
   }
   function renderCatalogCards(text, ts) {
     var d = document.createElement("div"); d.className = "lc-m b";
@@ -497,7 +522,7 @@
     renderPage();
 
     d.appendChild(wrap);
-    return d;
+    return _makeBotRow(d);
   }
   function addMsgRaw(t, c, ts, imgUrl) {
     msgs.appendChild(renderMsg(t, c, ts, imgUrl)); scroll();
@@ -509,9 +534,12 @@
     resetInactivityTimer();
   }
   function showTyping(label) {
-    var d = document.createElement("div"); d.className = "lc-t"; d.id = "lc-tp";
+    var row = document.createElement("div"); row.className = "lc-bot-row"; row.id = "lc-tp";
+    var av = document.createElement("div"); av.className = "lc-avatar"; av.setAttribute("aria-hidden","true"); av.textContent = _botAvatarInitials;
+    var d = document.createElement("div"); d.className = "lc-t";
     d.innerHTML = '<div class="lc-spinner"></div> ' + (label || 'Thinking…');
-    msgs.appendChild(d); scroll();
+    row.appendChild(av); row.appendChild(d);
+    msgs.appendChild(row); scroll();
   }
   function hideTyping() { var e = document.getElementById("lc-tp"); if (e) e.remove(); }
 
@@ -652,9 +680,9 @@
   }
 
   function showPatronTypeStep() {
-    // Remove any existing identity form
+    // Remove any existing identity form (and its bot-row wrapper)
     var old = document.getElementById("lc-patron-form");
-    if (old) old.remove();
+    if (old) { var oldRow = old.closest(".lc-bot-row") || old; oldRow.remove(); }
 
     // Bot message asking for type
     var botMsg = document.createElement("div");
@@ -673,11 +701,8 @@
           t.label + '</button>';
       }).join("") +
       '</div>';
-    msgs.appendChild(botMsg);
+    msgs.appendChild(_makeBotRow(botMsg));
     scroll();
-
-    // Attach click handlers
-    botMsg.querySelectorAll(".lc-patron-type-btn").forEach(function(b) {
       b.addEventListener("click", function() {
         _patronType = b.getAttribute("data-value");
         var prompt = b.getAttribute("data-prompt");
@@ -686,7 +711,7 @@
         if (anonymous) {
           _patronDetails = "";
           var f = document.getElementById("lc-patron-form");
-          if (f) f.remove();
+          if (f) { var fRow = f.closest(".lc-bot-row") || f; fRow.remove(); }
           _onIdentityComplete();
         } else {
           showPatronDetailsStep(prompt);
@@ -697,7 +722,7 @@
 
   function showPatronDetailsStep(prompt) {
     var old = document.getElementById("lc-patron-form");
-    if (old) old.remove();
+    if (old) { var oldRow2 = old.closest(".lc-bot-row") || old; oldRow2.remove(); }
 
     var detailMsg = document.createElement("div");
     detailMsg.className = "lc-m b";
@@ -712,10 +737,8 @@
       'style="background:#0E553F;color:#fff;border:none;border-radius:14px;padding:8px 14px;font-size:.82rem;cursor:pointer">' +
       'OK</button>' +
       '</div>';
-    msgs.appendChild(detailMsg);
+    msgs.appendChild(_makeBotRow(detailMsg));
     scroll();
-
-    var detailInput = document.getElementById("lc-patron-detail-input");
     var detailBtn   = document.getElementById("lc-patron-detail-btn");
     detailInput.focus();
 
@@ -725,7 +748,7 @@
       _patronDetails = val;
       // Don't render as a chat bubble — just remove the form and proceed
       var f = document.getElementById("lc-patron-form");
-      if (f) f.remove();
+      if (f) { var fRow2 = f.closest(".lc-bot-row") || f; fRow2.remove(); }
       _onIdentityComplete();
     }
 
@@ -1131,13 +1154,13 @@
       'padding:6px 16px;font-size:.82rem;cursor:pointer;transition:all .15s" ' +
       'aria-label="Cancel librarian request">Cancel request</button>';
     cancelDiv.querySelector("button").addEventListener("click", cancelHandoff);
-    msgs.appendChild(cancelDiv);
+    msgs.appendChild(_makeBotRow(cancelDiv));
     scroll();
   }
 
   function removeCancelButton() {
     var el = document.getElementById("lc-cancel-handoff");
-    if (el) el.remove();
+    if (el) { var parent = el.closest(".lc-bot-row") || el; parent.remove(); }
   }
 
   function cancelHandoff() {
@@ -1249,7 +1272,7 @@
       '<button class="lc-rate-btn" data-rating="2" aria-label="Moderately Satisfied" style="text-align:left">&#128076; 2 — Moderately Satisfied</button>' +
       '<button class="lc-rate-btn" data-rating="1" aria-label="Not Satisfied" style="text-align:left">😞 1 — Not Satisfied</button>' +
       '</div>';
-    msgs.appendChild(rateDiv);
+    msgs.appendChild(_makeBotRow(rateDiv));
     scroll();
     rateDiv.querySelectorAll(".lc-rate-btn").forEach(function(rBtn) {
       rBtn.addEventListener("click", function() {
