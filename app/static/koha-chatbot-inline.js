@@ -555,8 +555,9 @@
 
   function setLibrarianButtonState(available, reason) {
     libBtnAvailable = available;
-    // Don't touch the button if the identity form is still pending
-    // (_patronType is empty until the patron completes the form)
+    // Don't touch the DOM button if the identity form is still pending —
+    // _lockChat() owns the disabled state until identity is complete.
+    // We still update libBtnAvailable so _unlockChat() uses the correct value.
     if (!_patronType) return;
     // Always keep the button enabled so it can be clicked to show the offline message.
     // Visual state changes to indicate availability without blocking interaction.
@@ -645,6 +646,8 @@
     if (fqEl) fqEl.style.display = "";
     scroll();
     _unlockChat();
+    // Re-check availability now so the librarian button reflects the real server state
+    checkLibrarianAvailability();
     inp.focus();
   }
 
