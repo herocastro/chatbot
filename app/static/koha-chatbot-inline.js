@@ -167,11 +167,15 @@
       }));
   var chatHistory = stored.history || []; // [{text, cls}]
   var wasOpen = stored.open !== undefined ? stored.open : true;
+  // Patron identity — persisted so returning users skip the form
+  var _patronType    = stored.patronType    || "";
+  var _patronDetails = stored.patronDetails || "";
 
   function saveState() {
     try {
       sessionStorage.setItem(STORE_KEY, JSON.stringify({
-        ver: STORE_VER, sid: sid, history: chatHistory.slice(-40), open: open
+        ver: STORE_VER, sid: sid, history: chatHistory.slice(-40), open: open,
+        patronType: _patronType, patronDetails: _patronDetails
       }));
     } catch(e) {}
   }
@@ -301,7 +305,14 @@
     fab.innerHTML = open ? "&#10005;" : "&#128218;";
     fab.setAttribute("aria-label", open ? "Close chat" : "Open library chat assistant");
     if (open) {
-      inp.focus();
+      // Show identity form on first open if not yet identified
+      if (!_identityDone) {
+        _lockChat();
+        showPatronTypeStep();
+        _identityDone = true; // prevent showing again on re-open
+      } else {
+        inp.focus();
+      }
       setTimeout(function() { msgs.scrollTop = msgs.scrollHeight; }, 50);
     }
     saveState();
@@ -577,9 +588,8 @@
   checkLibrarianAvailability();
   setInterval(checkLibrarianAvailability, 60000);
 
-  // --- Patron identity form (shown before handoff) ---
-  var _patronType = "";
-  var _patronDetails = "";
+  // --- Patron identity form (shown on first open, before any interaction) ---
+  // _patronType and _patronDetails are already declared above from stored session state.
 
   var _PATRON_TYPES = [
     { label: "🎓 Student (Higher Ed)",   value: "Student (Higher Ed)",   prompt: "Please enter your Course & Year (e.g. BSIT 3rd Year):" },
@@ -589,13 +599,42 @@
     { label: "🙋 Visitor",              value: "Visitor",               anonymous: true },
   ];
 
+  // Lock/unlock helpers — keep input + librarian btn + FAQs disabled until identity is set
+  function _lockChat() {
+    inp.disabled = true;
+    inp.placeholder = "Please identify yourself first…";
+    btn.disabled = true;
+    libBtn.disabled = true;
+    libBtn.style.opacity = "0.45";
+  }
+  function _unlockChat() {
+    inp.disabled = false;
+    inp.placeholder = "Ask me about the library...";
+    btn.disabled = !inp.value.trim();
+    libBtn.disabled = false;
+    if (libBtnAvailable) {
+      libBtn.style.opacity = "1";
+    } else {
+      libBtn.style.opacity = "0.6";
+    }
+  }
+
+  function _onIdentityComplete() {
+    // POST patron info to server
+    fetch(CHATBOT_API + "/api/patron-info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
+    }).catch(function() {});
+    saveState();
+    _unlockChat();
+    inp.focus();
+  }
+
   function showPatronTypeStep() {
     // Remove any existing identity form
     var old = document.getElementById("lc-patron-form");
     if (old) old.remove();
-
-    var w = msgs.querySelector(".lc-w"); if (w) w.remove();
-    var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
 
     // Bot message asking for type
     var botMsg = document.createElement("div");
@@ -604,7 +643,7 @@
     botMsg.style.cssText = "max-width:90%;white-space:normal";
     botMsg.innerHTML =
       '<div style="margin-bottom:10px;font-size:.9em;line-height:1.5">' +
-      'Hello! 👋 Before connecting you to a librarian, please tell us who you are:' +
+      'Hello! 👋 Before we begin, please tell us who you are:' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px">' +
       _PATRON_TYPES.map(function(t) {
@@ -623,21 +662,13 @@
         _patronType = b.getAttribute("data-value");
         var prompt = b.getAttribute("data-prompt");
         var anonymous = b.getAttribute("data-anonymous") === "true";
-        // Show user's choice as a visual bubble only — don't save to chatHistory
+        // Show user's choice as a visual bubble
         addMsgRaw(_patronType, "u");
         if (anonymous) {
-          // Skip details step — remove form and go straight to handoff
+          _patronDetails = "";
           var f = document.getElementById("lc-patron-form");
           if (f) f.remove();
-          _patronDetails = "";
-          fetch(CHATBOT_API + "/api/patron-info", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: "" })
-          }).catch(function() {});
-          inp.value = "Ask a librarian";
-          btn.disabled = false;
-          send();
+          _onIdentityComplete();
         } else {
           showPatronDetailsStep(prompt);
         }
@@ -646,7 +677,6 @@
   }
 
   function showPatronDetailsStep(prompt) {
-    // Remove the type selection form
     var old = document.getElementById("lc-patron-form");
     if (old) old.remove();
 
@@ -667,29 +697,17 @@
     scroll();
 
     var detailInput = document.getElementById("lc-patron-detail-input");
-    var detailBtn = document.getElementById("lc-patron-detail-btn");
-
+    var detailBtn   = document.getElementById("lc-patron-detail-btn");
     detailInput.focus();
 
     function submitDetails() {
       var val = detailInput.value.trim();
       if (!val) { detailInput.style.borderColor = "#e74c3c"; return; }
       _patronDetails = val;
-      // Show as visual bubble only — don't save to chatHistory to avoid duplicates on reload
       addMsgRaw(_patronDetails, "u");
-      // Remove form
       var f = document.getElementById("lc-patron-form");
       if (f) f.remove();
-      // Save to server then trigger handoff
-      fetch(CHATBOT_API + "/api/patron-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sid, patron_type: _patronType, patron_details: _patronDetails })
-      }).catch(function() {});
-      // Now trigger the actual handoff
-      inp.value = "Ask a librarian";
-      btn.disabled = false;
-      send();
+      _onIdentityComplete();
     }
 
     detailBtn.addEventListener("click", submitDetails);
@@ -697,6 +715,19 @@
       if (e.key === "Enter") { e.preventDefault(); submitDetails(); }
     });
   }
+
+  // Show identity form on first open if not yet identified; otherwise unlock immediately
+  var _identityDone = !!_patronType;
+  if (!_identityDone) {
+    _lockChat();
+    // If the chat is already open on load, show the form immediately
+    if (wasOpen) {
+      showPatronTypeStep();
+      _identityDone = true; // FAB handler won't re-show it
+    }
+    // If chat is closed, the FAB click handler will show the form on first open
+  }
+  // (If identity already set from a previous session, chat is fully unlocked by default)
 
   libBtn.addEventListener("click", function () {
     if (handoffActive) return; // already in handoff, ignore
@@ -720,10 +751,14 @@
         });
       return;
     }
-    // Disable immediately to prevent double-click showing the form twice
+    // Identity already collected upfront — go straight to handoff
     libBtn.disabled = true;
     libBtn.style.opacity = "0.45";
-    showPatronTypeStep();
+    var w = msgs.querySelector(".lc-w"); if (w) w.remove();
+    var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
+    inp.value = "Ask a librarian";
+    btn.disabled = false;
+    send();
   });
 
   // --- 5-minute inactivity timer ---
@@ -763,6 +798,10 @@
     _joinedMsgShown = false;
     returnToBot._done = false;
     chatHistory.length = 0;
+    // Clear patron identity so the form shows again for the new session
+    _patronType = "";
+    _patronDetails = "";
+    _identityDone = false;
     sid = (typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
       : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -774,9 +813,10 @@
       '<div class="lc-faqs" id="lc-faqs-reset"></div>';
     var resetFaqContainer = document.getElementById("lc-faqs-reset");
     if (resetFaqContainer) loadAndRenderFaqs(resetFaqContainer);
-    inp.disabled = false;
-    inp.placeholder = "Type your message…";
-    btn.disabled = false;
+    // Lock and show identity form for the new session
+    _lockChat();
+    showPatronTypeStep();
+    _identityDone = true; // mark so FAB re-open doesn't show it again
     // Re-check librarian availability after reset
     checkLibrarianAvailability();
     saveState();
