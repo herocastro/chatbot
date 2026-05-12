@@ -340,6 +340,33 @@ async def get_image(img_key: str):
         return JSONResponse(status_code=500, content={"error": "Failed to serve image"})
 
 
+@app.get("/api/pdf/{pdf_key}")
+async def get_pdf(pdf_key: str):
+    """Serve a stored FAQ PDF by its DB key."""
+    try:
+        from app.staff_routes import staff_store as _ss
+        if _ss is None:
+            return JSONResponse(status_code=404, content={"error": "Not found"})
+        data_url = _ss.get_setting(pdf_key)
+        if not data_url or not data_url.startswith("data:application/pdf"):
+            return JSONResponse(status_code=404, content={"error": "PDF not found"})
+        import base64
+        header, b64data = data_url.split(",", 1)
+        pdf_bytes = base64.b64decode(b64data)
+        from fastapi.responses import Response as _Resp
+        return _Resp(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Content-Disposition": f'inline; filename="{pdf_key}.pdf"',
+            },
+        )
+    except Exception:
+        logger.exception("Failed to serve PDF %s", pdf_key)
+        return JSONResponse(status_code=500, content={"error": "Failed to serve PDF"})
+
+
 @app.get("/debug/faq-images")
 async def debug_faq_images():
     """Debug: show what image_url values are stored in the current FAQ list."""
@@ -542,12 +569,11 @@ async def chat(request: ChatRequest):
                     client_search=raw_kw,
                 )
     elif classification.intent == "library_info":
-        reply, _img_url = handle_library_info_query(
+        reply, _img_url, _pdf_url = handle_library_info_query(
             client, request.message, library_info, history
         )
-        # Pass image_url as-is — the widget resolves relative /api/image/ paths
-        # using its own CHATBOT_API base, which is always correct regardless of deployment.
-        # Store conversation and return with image if present
+        # Pass image_url and pdf_url as-is — the widget resolves relative /api/image/ and
+        # /api/pdf/ paths using its own CHATBOT_API base, which is always correct.
         session_mgr.add_message(request.session_id, "user", request.message)
         session_mgr.add_message(request.session_id, "assistant", reply)
         if session_store is not None:
@@ -561,6 +587,7 @@ async def chat(request: ChatRequest):
             session_id=request.session_id,
             timestamp=time.time(),
             image_url=_img_url if _img_url else None,
+            pdf_url=_pdf_url if _pdf_url else None,
         )
     elif classification.intent == "greeting":
         # Use a fast static response — no LLM needed for greetings

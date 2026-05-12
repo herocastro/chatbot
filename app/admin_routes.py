@@ -319,6 +319,46 @@ async def upload_image(request: Request):
         return JSONResponse(status_code=500, content={"error": "Failed to process image upload"})
 
 
+@router.post("/upload-pdf")
+async def upload_pdf(request: Request):
+    """Accept a PDF upload, store it in DB under a unique key, return /api/pdf/<key> URL.
+
+    Max size: 5 MB.
+    """
+    MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+
+    try:
+        form = await request.form()
+        file = form.get("file")
+        if file is None:
+            return JSONResponse(status_code=400, content={"error": "No file provided."})
+
+        content_type = file.content_type or "application/pdf"
+        if content_type != "application/pdf" and not (file.filename or "").lower().endswith(".pdf"):
+            return JSONResponse(status_code=400, content={"error": "Only PDF files are allowed."})
+
+        data = await file.read()
+        if len(data) > MAX_BYTES:
+            return JSONResponse(status_code=400, content={"error": f"PDF too large ({len(data)//1024} KB). Maximum size is 5 MB."})
+
+        import base64, uuid as _uuid
+        b64 = base64.b64encode(data).decode("ascii")
+        data_url = f"data:application/pdf;base64,{b64}"
+
+        pdf_key = f"faq_pdf_{_uuid.uuid4().hex}"
+        from app.staff_routes import _get_store as _get_staff_store
+        try:
+            _get_staff_store().update_settings({pdf_key: data_url})
+        except Exception:
+            logger.warning("Could not save PDF to settings store")
+
+        original_name = (file.filename or "document.pdf").replace('"', "")
+        return {"url": f"/api/pdf/{pdf_key}", "filename": original_name}
+    except Exception:
+        logger.exception("Failed to process PDF upload")
+        return JSONResponse(status_code=500, content={"error": "Failed to process PDF upload"})
+
+
 # ------------------------------------------------------------------
 # Library Info Management
 # ------------------------------------------------------------------

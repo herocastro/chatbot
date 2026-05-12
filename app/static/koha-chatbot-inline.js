@@ -280,7 +280,7 @@
     var fq = msgs.querySelector(".lc-faqs"); if (fq) fq.remove();
     chatHistory.forEach(function(m) {
       if (m.cls === "b" && m.text && m.text.indexOf("👩‍💼 Librarian:") === 0) return;
-      addMsgRaw(m.text, m.cls, m.ts, m.imgUrl || null);
+      addMsgRaw(m.text, m.cls, m.ts, m.imgUrl || null, m.pdfUrl || null);
     });
   }
 
@@ -342,7 +342,7 @@
 
   // Helpers
   function scroll() { msgs.scrollTop = msgs.scrollHeight; }
-  function renderMsg(t, c, ts, imgUrl) {
+  function renderMsg(t, c, ts, imgUrl, pdfUrl) {
     var d = document.createElement("div"); d.className = "lc-m " + c;
     // Check if this is a catalog result message — render as cards
     if (c === "b" && t && t.indexOf("found in the catalog") !== -1) {
@@ -395,6 +395,25 @@
       img.src = resolvedImgUrl;
       imgWrap.appendChild(img);
       d.appendChild(imgWrap);
+    }
+    // Render PDF download button if provided
+    if (pdfUrl && c === "b") {
+      var resolvedPdfUrl = pdfUrl;
+      if (pdfUrl.startsWith("/")) {
+        resolvedPdfUrl = CHATBOT_API + pdfUrl;
+      }
+      var pdfBtn = document.createElement("a");
+      pdfBtn.href = resolvedPdfUrl;
+      pdfBtn.target = "_blank";
+      pdfBtn.rel = "noopener";
+      pdfBtn.style.cssText = "display:inline-flex;align-items:center;gap:6px;margin-top:10px;" +
+        "background:#0E553F;color:#fff;border-radius:14px;padding:7px 14px;" +
+        "font-size:.82rem;text-decoration:none;font-weight:600;transition:background .15s";
+      pdfBtn.innerHTML = "&#128196; Download PDF";
+      pdfBtn.addEventListener("mouseover", function() { this.style.background = "#0a3f2e"; });
+      pdfBtn.addEventListener("mouseout", function() { this.style.background = "#0E553F"; });
+      pdfBtn.addEventListener("click", function(e) { e.stopPropagation(); });
+      d.appendChild(pdfBtn);
     }
     d.querySelectorAll("a.lc-link").forEach(function(a) {
       a.addEventListener("click", function(e) {
@@ -513,12 +532,12 @@
     d.appendChild(wrap);
     return d;
   }
-  function addMsgRaw(t, c, ts, imgUrl) {
-    msgs.appendChild(renderMsg(t, c, ts, imgUrl)); scroll();
+  function addMsgRaw(t, c, ts, imgUrl, pdfUrl) {
+    msgs.appendChild(renderMsg(t, c, ts, imgUrl, pdfUrl)); scroll();
   }
-  function addMsg(t, c, ts, imgUrl) {
-    addMsgRaw(t, c, ts, imgUrl);
-    chatHistory.push({text: t, cls: c, ts: ts, imgUrl: imgUrl || null});
+  function addMsg(t, c, ts, imgUrl, pdfUrl) {
+    addMsgRaw(t, c, ts, imgUrl, pdfUrl);
+    chatHistory.push({text: t, cls: c, ts: ts, imgUrl: imgUrl || null, pdfUrl: pdfUrl || null});
     saveState();
     resetInactivityTimer();
   }
@@ -988,7 +1007,7 @@
           });
         return;
       }
-      hideTyping(); if (d.reply || d.image_url) addMsg(d.reply || "", "b", d.timestamp, d.image_url || null);
+      hideTyping(); if (d.reply || d.image_url || d.pdf_url) addMsg(d.reply || "", "b", d.timestamp, d.image_url || null, d.pdf_url || null);
     })
     .catch(function (err) {
       hideTyping();
@@ -1299,8 +1318,8 @@
 
   // Detect handoff activation from bot responses
   var _origAddMsg = addMsg;
-  addMsg = function(t, c, ts, imgUrl) {
-    _origAddMsg(t, c, ts, imgUrl || null);
+  addMsg = function(t, c, ts, imgUrl, pdfUrl) {
+    _origAddMsg(t, c, ts, imgUrl || null, pdfUrl || null);
     if (c === "b" && t && t.indexOf("notified a librarian") !== -1) {
       handoffHandler = null;
       returnToBot._done = false;
@@ -1333,8 +1352,8 @@
             chatHistory.forEach(function(m) {
               if (m.cls === "b" && m.text && m.text.indexOf("👩‍💼 Librarian:") === 0) return;
               combined.push({ ts: m.ts || 0, render: function(entry) {
-                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null);
-              }, text: m.text, cls: m.cls, imgUrl: m.imgUrl, isHistory: true });
+                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null, entry.pdfUrl || null);
+              }, text: m.text, cls: m.cls, imgUrl: m.imgUrl, pdfUrl: m.pdfUrl, isHistory: true });
             });
             d.messages.forEach(function(m) {
               var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
@@ -1353,7 +1372,7 @@
               if (entry.isLibrarian) {
                 addMsgRaw("👩‍💼 Librarian: " + entry.content, "b", entry.ts);
               } else {
-                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null);
+                addMsgRaw(entry.text, entry.cls, entry.ts, entry.imgUrl || null, entry.pdfUrl || null);
               }
             });
             scroll();

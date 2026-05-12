@@ -94,27 +94,30 @@ def handle_library_info_query(
     message: str,
     library_info: LibraryInfo,
     conversation_history: list[dict],
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     """Handle a library information query from a patron.
 
-    Returns (reply_text, image_url) — image_url is empty string if none.
+    Returns (reply_text, image_url, pdf_url) — image_url and pdf_url are
+    empty strings if not present.
     """
     if not library_info or not library_info.faqs:
-        return CONTACT_STAFF_MESSAGE, ""
+        return CONTACT_STAFF_MESSAGE, "", ""
 
     matches = _find_matching_faqs(message, library_info)
 
     if not matches:
-        return CONTACT_STAFF_MESSAGE, ""
+        return CONTACT_STAFF_MESSAGE, "", ""
 
     # Exact match — return content and image directly, bypassing LLM
     import re as _re
     _url_pattern = _re.compile(r'https?://\S+|data:image/[^\s]+')
     msg_lower = message.strip().lower()
     exact_image_url = ""
+    exact_pdf_url = ""
     if len(matches) == 1 and matches[0].question.strip().lower() == msg_lower:
         faq = matches[0]
         exact_image_url = faq.image_url.strip() if faq.image_url else ""
+        exact_pdf_url = faq.pdf_url.strip() if faq.pdf_url else ""
 
         # If image_url is empty, check if a URL was embedded in the content field
         # (happens when admin pasted a URL into the reply box instead of the image field)
@@ -127,13 +130,14 @@ def handle_library_info_query(
         clean_content = _url_pattern.sub("", faq.content).strip()
 
         if clean_content:
-            return clean_content, exact_image_url
-        # No text content but has image — return a minimal reply so the bubble is never blank
-        if exact_image_url:
-            return "Here's the information you requested. 📋", exact_image_url
+            return clean_content, exact_image_url, exact_pdf_url
+        # No text content but has image or PDF — return a minimal reply so the bubble is never blank
+        if exact_image_url or exact_pdf_url:
+            return "Here's the information you requested. 📋", exact_image_url, exact_pdf_url
 
-    # Collect image from best match (first one with an image), preserving exact match image
+    # Collect image and pdf from best match (first one with a value)
     image_url = exact_image_url
+    pdf_url = exact_pdf_url
     if not image_url:
         for faq in matches:
             if faq.image_url and faq.image_url.strip():
@@ -145,6 +149,11 @@ def handle_library_info_query(
                 if embedded:
                     image_url = embedded.group(0)
                     break
+    if not pdf_url:
+        for faq in matches:
+            if faq.pdf_url and faq.pdf_url.strip():
+                pdf_url = faq.pdf_url.strip()
+                break
 
     # Build data string from matched FAQ content — strip URLs so LLM never repeats them
     data_parts = []
@@ -154,11 +163,11 @@ def handle_library_info_query(
             data_parts.append(f"[{faq.question}]\n{clean_content}")
 
     if not data_parts:
-        # No content at all — if we have an image, return a minimal reply
-        if image_url:
-            logger.info("FAQ image-only reply, image_url length=%d", len(image_url))
-            return "Here's the information you requested. 📋", image_url
-        return CONTACT_STAFF_MESSAGE, ""
+        # No content at all — if we have an image or PDF, return a minimal reply
+        if image_url or pdf_url:
+            logger.info("FAQ image/pdf-only reply, image_url length=%d, pdf_url length=%d", len(image_url), len(pdf_url))
+            return "Here's the information you requested. 📋", image_url, pdf_url
+        return CONTACT_STAFF_MESSAGE, "", ""
 
     data_str = "\n\n".join(data_parts)
 
@@ -172,8 +181,8 @@ def handle_library_info_query(
             messages.append({"role": "user", "content": prompt})
             reply = client.chat(messages)
             if isinstance(reply, str) and reply and "trouble" not in reply.lower() and "moment" not in reply.lower():
-                return reply, image_url
+                return reply, image_url, pdf_url
         except Exception:
             logger.info("LLM unavailable for library info, using raw FAQ content")
 
-    return f"{data_str} 📚", image_url
+    return f"{data_str} 📚", image_url, pdf_url

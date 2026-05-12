@@ -542,6 +542,21 @@
           <div id="li-d-upload-status" style="font-size:0.82em;color:#7f8c8d;margin-top:4px"></div>
           <div id="li-d-image-preview" style="margin-top:8px;display:none"><img id="li-d-image-thumb" src="" alt="Preview" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #ddd"></div>
         </div>
+        <div class="li-drawer-field">
+          <label for="li-d-pdf">PDF Attachment <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
+          <p class="ai-hint">Upload a PDF (max 5 MB). A download button will appear in the chat widget alongside the reply.</p>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="li-d-pdf" placeholder="https://example.com/document.pdf" aria-label="PDF URL" style="flex:1;min-width:0">
+            <label class="li-upload-btn" for="li-d-pdf-file" aria-label="Upload PDF">📄 Upload PDF</label>
+            <input type="file" id="li-d-pdf-file" accept="application/pdf,.pdf" style="display:none" aria-label="Choose PDF file">
+          </div>
+          <div id="li-d-pdf-upload-status" style="font-size:0.82em;color:#7f8c8d;margin-top:4px"></div>
+          <div id="li-d-pdf-preview" style="margin-top:8px;display:none;align-items:center;gap:8px;background:#f4f6f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
+            <span style="font-size:1.2em">📄</span>
+            <span id="li-d-pdf-name" style="font-size:0.85em;color:#2c3e50;word-break:break-all"></span>
+            <button type="button" id="li-d-pdf-remove" style="margin-left:auto;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.82em">✕ Remove</button>
+          </div>
+        </div>
         <div id="li-drawer-error" class="li-drawer-error hidden"></div>
       </div>
       <div class="li-drawer-footer">
@@ -1691,6 +1706,10 @@
         var imgUrl = isNew ? "" : (_faqData[idx].image_url || "");
         document.getElementById("li-d-image").value = imgUrl;
         updateImagePreview(imgUrl);
+        var pdfUrl = isNew ? "" : (_faqData[idx].pdf_url || "");
+        document.getElementById("li-d-pdf").value = pdfUrl;
+        updatePdfPreview(pdfUrl, "");
+        document.getElementById("li-d-pdf-upload-status").textContent = "";
         document.getElementById("li-drawer-error").classList.add("hidden");
         document.getElementById("li-drawer-error").textContent = "";
         document.getElementById("li-drawer-status").textContent = "";
@@ -1754,6 +1773,58 @@
       }
       document.getElementById("li-d-image").addEventListener("input", function() {
         updateImagePreview(this.value);
+      });
+
+      // PDF upload handler
+      function updatePdfPreview(url, filename) {
+        var preview = document.getElementById("li-d-pdf-preview");
+        var nameEl = document.getElementById("li-d-pdf-name");
+        if (url && url.trim()) {
+          nameEl.textContent = filename || url.split("/").pop() || "document.pdf";
+          preview.style.display = "flex";
+        } else {
+          preview.style.display = "none";
+          nameEl.textContent = "";
+        }
+      }
+      document.getElementById("li-d-pdf").addEventListener("input", function() {
+        updatePdfPreview(this.value, "");
+      });
+      document.getElementById("li-d-pdf-remove").addEventListener("click", function() {
+        document.getElementById("li-d-pdf").value = "";
+        updatePdfPreview("", "");
+      });
+
+      document.getElementById("li-d-pdf-file").addEventListener("change", async function() {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var statusEl = document.getElementById("li-d-pdf-upload-status");
+        statusEl.textContent = "Uploading…";
+        statusEl.style.color = "#7f8c8d";
+        try {
+          var formData = new FormData();
+          formData.append("file", file, file.name);
+          var resp = await fetch("/admin/api/upload-pdf", {
+            method: "POST",
+            headers: { "X-Admin-Key": apiKey },
+            body: formData,
+          });
+          var result = await resp.json();
+          if (resp.ok && result.url) {
+            document.getElementById("li-d-pdf").value = result.url;
+            updatePdfPreview(result.url, result.filename || file.name);
+            statusEl.textContent = "✓ Uploaded";
+            statusEl.style.color = "#27ae60";
+            setTimeout(function() { statusEl.textContent = ""; }, 3000);
+          } else {
+            statusEl.textContent = "✗ " + (result.error || "Upload failed");
+            statusEl.style.color = "#e74c3c";
+          }
+        } catch (e) {
+          statusEl.textContent = "✗ " + (e.message || "Error");
+          statusEl.style.color = "#e74c3c";
+        }
+        this.value = "";
       });
 
       document.getElementById("li-d-image-file").addEventListener("change", async function() {
@@ -1825,6 +1896,7 @@
         var question = document.getElementById("li-d-question").value.trim();
         var content = document.getElementById("li-d-content").value.trim();
         var imageUrl = document.getElementById("li-d-image").value.trim();
+        var pdfUrl = document.getElementById("li-d-pdf").value.trim();
         var errEl = document.getElementById("li-drawer-error");
         var statusEl = document.getElementById("li-drawer-status");
 
@@ -1833,9 +1905,9 @@
         errEl.classList.add("hidden");
 
         if (_editingIndex === -1) {
-          _faqData.push({ label: label, question: question, content: content, image_url: imageUrl });
+          _faqData.push({ label: label, question: question, content: content, image_url: imageUrl, pdf_url: pdfUrl });
         } else {
-          _faqData[_editingIndex] = { label: label, question: question, content: content, image_url: imageUrl };
+          _faqData[_editingIndex] = { label: label, question: question, content: content, image_url: imageUrl, pdf_url: pdfUrl };
         }
 
         var saved = await saveFaqsToServer(statusEl);
