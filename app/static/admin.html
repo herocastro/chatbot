@@ -1922,7 +1922,7 @@
       function updateAiPreview() {
         var name = document.getElementById("ai-name").value.trim() || "LLORA";
         var welcome = document.getElementById("ai-welcome").value.trim();
-        if (!welcome) welcome = "Hi! 👋 I'm {name}, your virtual library assistant. What can I do for you?";
+        if (!welcome) welcome = "Hello, I'm {name} (Lorma Library Online Research Assistant), your virtual assistant. I'm here to provide the assistance you need. I'll be happy to serve you.";
         document.getElementById("ai-preview-bubble").textContent = welcome.replace(/\{name\}/g, name);
       }
 

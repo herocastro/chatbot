@@ -137,7 +137,7 @@
   wrap.innerHTML =
     '<div id="lc-hdr"><span aria-hidden="true">&#128218;</span> LLORA — Library Assistant<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
     '<div id="lc-msgs" role="log" aria-live="polite">' +
-    '<div class="lc-w">Hi! 👋 I\'m LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?</div>' +
+    '<div class="lc-w">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
     '<div class="lc-faqs" id="lc-faqs-init">' +
     '</div>' +
     '</div>' +
@@ -241,7 +241,7 @@
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var name = d.name || "LLORA";
-      var welcome = d.welcome_message || ("Hi! 👋 I'm " + name + ", your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?");
+      var welcome = d.welcome_message || ("Hello, I'm " + name + " (Lorma Library Online Research Assistant), your virtual assistant. I'm here to provide the assistance you need. I'll be happy to serve you.");
       // Replace LLORA placeholder in after-hours message with actual bot name
       AFTER_HOURS_MESSAGE = AFTER_HOURS_MESSAGE.replace("LLORA", name);
       // Update header
@@ -833,7 +833,7 @@
           return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
         });
     msgs.innerHTML =
-      '<div class="lc-w" style="display:none">Hi! 👋 I\'m LLORA, your virtual library assistant. I can help you find books, check hours, or answer questions about the library. What can I do for you?</div>' +
+      '<div class="lc-w" style="display:none">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
       '<div class="lc-faqs" id="lc-faqs-reset" style="display:none"></div>';
     var resetFaqContainer = document.getElementById("lc-faqs-reset");
     if (resetFaqContainer) loadAndRenderFaqs(resetFaqContainer);
