@@ -58,7 +58,15 @@ class AiSettings:
 
     def get_welcome_text(self) -> str:
         """Return the welcome message with the AI name substituted."""
-        return self.welcome_message.replace("{name}", self.name)
+        msg = self.welcome_message
+        # If the DB still has the new message we briefly deployed, revert it to the original
+        _new_msg = (
+            "Hello, I'm {name} (Lorma Library Online Research Assistant), your virtual assistant. "
+            "I'm here to provide the assistance you need. I'll be happy to serve you."
+        )
+        if msg.strip() == _new_msg.strip():
+            msg = DEFAULT_WELCOME_MESSAGE
+        return msg.replace("{name}", self.name)
 
     def to_dict(self) -> dict:
         return {
