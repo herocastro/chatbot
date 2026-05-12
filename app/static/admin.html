@@ -532,29 +532,23 @@
           </div>
         </div>
         <div class="li-drawer-field">
-          <label for="li-d-image">Image <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
-          <p class="ai-hint">Upload an image (max 1 MB) or paste a URL. Shown below the bot reply in the widget.</p>
+          <label>Attachment <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
+          <p class="ai-hint">Upload an image or PDF (max 5 MB), or paste a URL. Images are shown inline; PDFs open in a viewer in the chat widget.</p>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="li-d-image" placeholder="https://example.com/image.jpg" aria-label="Image URL" style="flex:1;min-width:0">
-            <label class="li-upload-btn" for="li-d-image-file" aria-label="Upload image">📁 Upload</label>
-            <input type="file" id="li-d-image-file" accept="image/*" style="display:none" aria-label="Choose image file">
+            <input type="text" id="li-d-image" placeholder="https://example.com/file.jpg or file.pdf" aria-label="Attachment URL" style="flex:1;min-width:0">
+            <label class="li-upload-btn" for="li-d-attach-file" aria-label="Upload image or PDF">📁 Upload</label>
+            <input type="file" id="li-d-attach-file" accept="image/*,application/pdf,.pdf" style="display:none" aria-label="Choose image or PDF file">
           </div>
+          <!-- hidden pdf_url field — populated when a PDF is uploaded -->
+          <input type="hidden" id="li-d-pdf">
           <div id="li-d-upload-status" style="font-size:0.82em;color:#7f8c8d;margin-top:4px"></div>
+          <!-- Image preview -->
           <div id="li-d-image-preview" style="margin-top:8px;display:none"><img id="li-d-image-thumb" src="" alt="Preview" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #ddd"></div>
-        </div>
-        <div class="li-drawer-field">
-          <label for="li-d-pdf">PDF Attachment <span style="font-weight:400;color:#7f8c8d">(optional)</span></label>
-          <p class="ai-hint">Upload a PDF (max 5 MB). A download button will appear in the chat widget alongside the reply.</p>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="li-d-pdf" placeholder="https://example.com/document.pdf" aria-label="PDF URL" style="flex:1;min-width:0">
-            <label class="li-upload-btn" for="li-d-pdf-file" aria-label="Upload PDF">📄 Upload PDF</label>
-            <input type="file" id="li-d-pdf-file" accept="application/pdf,.pdf" style="display:none" aria-label="Choose PDF file">
-          </div>
-          <div id="li-d-pdf-upload-status" style="font-size:0.82em;color:#7f8c8d;margin-top:4px"></div>
+          <!-- PDF preview strip -->
           <div id="li-d-pdf-preview" style="margin-top:8px;display:none;align-items:center;gap:8px;background:#f4f6f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
             <span style="font-size:1.2em">📄</span>
-            <span id="li-d-pdf-name" style="font-size:0.85em;color:#2c3e50;word-break:break-all"></span>
-            <button type="button" id="li-d-pdf-remove" style="margin-left:auto;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.82em">✕ Remove</button>
+            <span id="li-d-pdf-name" style="font-size:0.85em;color:#2c3e50;word-break:break-all;flex:1"></span>
+            <button type="button" id="li-d-pdf-remove" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.82em;white-space:nowrap">✕ Remove</button>
           </div>
         </div>
         <div id="li-drawer-error" class="li-drawer-error hidden"></div>
@@ -1709,7 +1703,7 @@
         var pdfUrl = isNew ? "" : (_faqData[idx].pdf_url || "");
         document.getElementById("li-d-pdf").value = pdfUrl;
         updatePdfPreview(pdfUrl, "");
-        document.getElementById("li-d-pdf-upload-status").textContent = "";
+        document.getElementById("li-d-upload-status").textContent = "";
         document.getElementById("li-drawer-error").classList.add("hidden");
         document.getElementById("li-drawer-error").textContent = "";
         document.getElementById("li-drawer-status").textContent = "";
@@ -1759,11 +1753,8 @@
         var preview = document.getElementById("li-d-image-preview");
         var thumb = document.getElementById("li-d-image-thumb");
         if (url && url.trim()) {
-          // Resolve relative URLs against the current page origin (admin is on Vercel)
           var resolved = url.trim();
-          if (resolved.startsWith("/")) {
-            resolved = window.location.origin + resolved;
-          }
+          if (resolved.startsWith("/")) resolved = window.location.origin + resolved;
           thumb.src = resolved;
           preview.style.display = "block";
         } else {
@@ -1771,11 +1762,6 @@
           thumb.src = "";
         }
       }
-      document.getElementById("li-d-image").addEventListener("input", function() {
-        updateImagePreview(this.value);
-      });
-
-      // PDF upload handler
       function updatePdfPreview(url, filename) {
         var preview = document.getElementById("li-d-pdf-preview");
         var nameEl = document.getElementById("li-d-pdf-name");
@@ -1787,103 +1773,95 @@
           nameEl.textContent = "";
         }
       }
-      document.getElementById("li-d-pdf").addEventListener("input", function() {
-        updatePdfPreview(this.value, "");
+      // When URL field is typed manually — detect pdf vs image by extension
+      document.getElementById("li-d-image").addEventListener("input", function() {
+        var val = this.value.trim();
+        var isPdf = val.toLowerCase().endsWith(".pdf") || val.includes("/api/pdf/");
+        if (isPdf) {
+          document.getElementById("li-d-pdf").value = val;
+          updatePdfPreview(val, "");
+          updateImagePreview("");
+        } else {
+          document.getElementById("li-d-pdf").value = "";
+          updateImagePreview(val);
+          updatePdfPreview("", "");
+        }
       });
       document.getElementById("li-d-pdf-remove").addEventListener("click", function() {
+        document.getElementById("li-d-image").value = "";
         document.getElementById("li-d-pdf").value = "";
         updatePdfPreview("", "");
+        updateImagePreview("");
       });
 
-      document.getElementById("li-d-pdf-file").addEventListener("change", async function() {
-        var file = this.files && this.files[0];
-        if (!file) return;
-        var statusEl = document.getElementById("li-d-pdf-upload-status");
-        statusEl.textContent = "Uploading…";
-        statusEl.style.color = "#7f8c8d";
-        try {
-          var formData = new FormData();
-          formData.append("file", file, file.name);
-          var resp = await fetch("/admin/api/upload-pdf", {
-            method: "POST",
-            headers: { "X-Admin-Key": apiKey },
-            body: formData,
-          });
-          var result = await resp.json();
-          if (resp.ok && result.url) {
-            document.getElementById("li-d-pdf").value = result.url;
-            updatePdfPreview(result.url, result.filename || file.name);
-            statusEl.textContent = "✓ Uploaded";
-            statusEl.style.color = "#27ae60";
-            setTimeout(function() { statusEl.textContent = ""; }, 3000);
-          } else {
-            statusEl.textContent = "✗ " + (result.error || "Upload failed");
-            statusEl.style.color = "#e74c3c";
-          }
-        } catch (e) {
-          statusEl.textContent = "✗ " + (e.message || "Error");
-          statusEl.style.color = "#e74c3c";
-        }
-        this.value = "";
-      });
+      // Single combined upload handler — routes to image or PDF endpoint based on file type
+      function compressImage(file, maxWidth, maxHeight, quality) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            var img = new Image();
+            img.onload = function() {
+              var canvas = document.createElement("canvas");
+              var w = img.width, h = img.height;
+              if (w > maxWidth || h > maxHeight) {
+                var ratio = Math.min(maxWidth / w, maxHeight / h);
+                w = Math.round(w * ratio); h = Math.round(h * ratio);
+              }
+              canvas.width = w; canvas.height = h;
+              canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+              canvas.toBlob(function(blob) { resolve(blob); }, "image/jpeg", quality);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
-      document.getElementById("li-d-image-file").addEventListener("change", async function() {
+      document.getElementById("li-d-attach-file").addEventListener("change", async function() {
         var file = this.files && this.files[0];
         if (!file) return;
         var statusEl = document.getElementById("li-d-upload-status");
-        statusEl.textContent = "Compressing…";
+        var isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+        statusEl.textContent = isPdf ? "Uploading…" : "Compressing…";
         statusEl.style.color = "#7f8c8d";
-
-        // Compress image client-side to keep it under 200KB before uploading
-        function compressImage(file, maxWidth, maxHeight, quality) {
-          return new Promise(function(resolve, reject) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-              var img = new Image();
-              img.onload = function() {
-                var canvas = document.createElement("canvas");
-                var w = img.width, h = img.height;
-                if (w > maxWidth || h > maxHeight) {
-                  var ratio = Math.min(maxWidth / w, maxHeight / h);
-                  w = Math.round(w * ratio);
-                  h = Math.round(h * ratio);
-                }
-                canvas.width = w;
-                canvas.height = h;
-                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-                canvas.toBlob(function(blob) { resolve(blob); }, "image/jpeg", quality);
-              };
-              img.onerror = reject;
-              img.src = e.target.result;
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-        }
-
         try {
-          // Compress to max 800x800, JPEG quality 0.75
-          var compressedBlob = await compressImage(file, 800, 800, 0.75);
-          statusEl.textContent = "Uploading…";
-
           var formData = new FormData();
-          formData.append("file", compressedBlob, "image.jpg");
-          var resp = await fetch("/admin/api/upload-image", {
-            method: "POST",
-            headers: { "X-Admin-Key": apiKey },
-            body: formData,
-          });
-          var result = await resp.json();
-          if (resp.ok && result.url) {
-            document.getElementById("li-d-image").value = result.url;
-            updateImagePreview(result.url);
-            statusEl.textContent = "✓ Uploaded";
-            statusEl.style.color = "#27ae60";
-            setTimeout(function() { statusEl.textContent = ""; }, 3000);
+          var endpoint, resultUrl, resultFilename;
+          if (isPdf) {
+            formData.append("file", file, file.name);
+            var resp = await fetch("/admin/api/upload-pdf", {
+              method: "POST", headers: { "X-Admin-Key": apiKey }, body: formData,
+            });
+            var result = await resp.json();
+            if (!resp.ok || !result.url) throw new Error(result.error || "Upload failed");
+            resultUrl = result.url;
+            resultFilename = result.filename || file.name;
+            document.getElementById("li-d-image").value = resultUrl;
+            document.getElementById("li-d-pdf").value = resultUrl;
+            updatePdfPreview(resultUrl, resultFilename);
+            updateImagePreview("");
           } else {
-            statusEl.textContent = "✗ " + (result.error || "Upload failed");
-            statusEl.style.color = "#e74c3c";
+            statusEl.textContent = "Compressing…";
+            var compressedBlob = await compressImage(file, 800, 800, 0.75);
+            statusEl.textContent = "Uploading…";
+            formData.append("file", compressedBlob, "image.jpg");
+            var resp = await fetch("/admin/api/upload-image", {
+              method: "POST", headers: { "X-Admin-Key": apiKey }, body: formData,
+            });
+            var result = await resp.json();
+            if (!resp.ok || !result.url) throw new Error(result.error || "Upload failed");
+            resultUrl = result.url;
+            document.getElementById("li-d-image").value = resultUrl;
+            document.getElementById("li-d-pdf").value = "";
+            updateImagePreview(resultUrl);
+            updatePdfPreview("", "");
           }
+          statusEl.textContent = "✓ Uploaded";
+          statusEl.style.color = "#27ae60";
+          setTimeout(function() { statusEl.textContent = ""; }, 3000);
         } catch (e) {
           statusEl.textContent = "✗ " + (e.message || "Error");
           statusEl.style.color = "#e74c3c";

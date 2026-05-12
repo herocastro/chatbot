@@ -396,24 +396,33 @@
       imgWrap.appendChild(img);
       d.appendChild(imgWrap);
     }
-    // Render PDF download button if provided
+    // Render PDF inline viewer if provided
     if (pdfUrl && c === "b") {
       var resolvedPdfUrl = pdfUrl;
       if (pdfUrl.startsWith("/")) {
         resolvedPdfUrl = CHATBOT_API + pdfUrl;
       }
-      var pdfBtn = document.createElement("a");
-      pdfBtn.href = resolvedPdfUrl;
-      pdfBtn.target = "_blank";
-      pdfBtn.rel = "noopener";
-      pdfBtn.style.cssText = "display:inline-flex;align-items:center;gap:6px;margin-top:10px;" +
-        "background:#0E553F;color:#fff;border-radius:14px;padding:7px 14px;" +
-        "font-size:.82rem;text-decoration:none;font-weight:600;transition:background .15s";
-      pdfBtn.innerHTML = "&#128196; Download PDF";
-      pdfBtn.addEventListener("mouseover", function() { this.style.background = "#0a3f2e"; });
-      pdfBtn.addEventListener("mouseout", function() { this.style.background = "#0E553F"; });
-      pdfBtn.addEventListener("click", function(e) { e.stopPropagation(); });
-      d.appendChild(pdfBtn);
+      var pdfWrap = document.createElement("div");
+      pdfWrap.style.cssText = "margin-top:10px;width:100%;border-radius:8px;overflow:hidden;border:1px solid #ddd";
+      // Inline iframe viewer
+      var pdfFrame = document.createElement("iframe");
+      pdfFrame.src = resolvedPdfUrl;
+      pdfFrame.style.cssText = "width:100%;height:320px;border:none;display:block;background:#f9f9f9";
+      pdfFrame.setAttribute("title", "PDF document");
+      pdfFrame.setAttribute("loading", "lazy");
+      pdfWrap.appendChild(pdfFrame);
+      // Fallback download link below the viewer
+      var pdfLink = document.createElement("a");
+      pdfLink.href = resolvedPdfUrl;
+      pdfLink.target = "_blank";
+      pdfLink.rel = "noopener";
+      pdfLink.style.cssText = "display:flex;align-items:center;gap:6px;padding:7px 12px;" +
+        "background:#f4f6f9;border-top:1px solid #ddd;font-size:.78rem;color:#0E553F;" +
+        "text-decoration:none;font-weight:600";
+      pdfLink.innerHTML = "&#128196; Open / Download PDF";
+      pdfLink.addEventListener("click", function(e) { e.stopPropagation(); });
+      pdfWrap.appendChild(pdfLink);
+      d.appendChild(pdfWrap);
     }
     d.querySelectorAll("a.lc-link").forEach(function(a) {
       a.addEventListener("click", function(e) {
