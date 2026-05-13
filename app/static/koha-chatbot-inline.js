@@ -1113,7 +1113,7 @@
             _joinedMsgShown = true;
             _origAddMsg("A librarian has joined the chat! 👋", "b");
           }
-        } else if (data.status === "ended" && handoffActive && handoffHandler) {
+        } else if (data.status === "ended" && handoffActive) {
           stopPolling(true);
           _stopAbly();
           showHandoffRating();
@@ -1205,6 +1205,19 @@
             _origAddMsg("A librarian has joined the chat! 👋", "b");
           }
         }
+        // Fallback: live_chat_status === "active" means librarian joined even if
+        // Ably missed the status event — ensure cancel button is gone and input is open
+        if (d.live_chat_status === "active" && handoffActive && !handoffHandler && d.handled_by) {
+          handoffHandler = d.handled_by;
+          removeCancelButton();
+          inp.disabled = false;
+          inp.placeholder = "Type your message…";
+          btn.disabled = false;
+          if (!_joinedMsgShown) {
+            _joinedMsgShown = true;
+            _origAddMsg("A librarian has joined the chat! 👋", "b");
+          }
+        }
 
         // New messages — use id-based deduplication to avoid missing or duplicating messages
         if (d.messages && d.messages.length > 0) {
@@ -1228,8 +1241,10 @@
 
         // Chat ended — use live_chat_status as the definitive signal
         // This is immune to cold-start false negatives because it checks
-        // the actual live_chat_sessions.status column, not the handoff flag
-        if (d.live_chat_status === "ended" && handoffActive && handoffHandler) {
+        // the actual live_chat_sessions.status column, not the handoff flag.
+        // Do NOT require handoffHandler — the librarian may have joined and ended
+        // quickly before the patron's poll caught the "active" state.
+        if (d.live_chat_status === "ended" && handoffActive) {
           stopPolling(true);
           showHandoffRating();
         } else if (!d.handoff_active && !d.live_chat_status && handoffActive && !handoffHandler) {
