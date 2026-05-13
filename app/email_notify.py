@@ -219,6 +219,54 @@ def send_staff_notify_email(
     return ok
 
 
+def send_claimed_email(
+    smtp_email: str,
+    smtp_password: str,
+    recipient_email: str,
+    staff_name: str,
+    claimed_by: str,
+    session_id: str,
+) -> bool:
+    """Notify a librarian that another librarian has already claimed the session."""
+    subject = f"📚 Session already being handled by {claimed_by}"
+
+    session_note = f'<p style="color:#7f8c8d;font-size:0.85rem;margin:0 0 20px">Session: {session_id[:16]}…</p>' if session_id else ""
+
+    html_body = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:20px">
+      <div style="background:#27ae60;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;text-align:center">
+        <h2 style="margin:0;font-size:1.1rem">✅ Patron Being Helped</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #ecf0f1;border-top:none;padding:24px 20px;border-radius:0 0 8px 8px">
+        <p style="color:#333;font-size:0.95rem;margin:0 0 16px">Hi <strong>{staff_name}</strong>, no action needed — <strong>{claimed_by}</strong> has already joined the chat and is helping the patron.</p>
+        {session_note}
+        <p style="color:#bdc3c7;font-size:0.78rem;text-align:center;margin:16px 0 0">— Lorma Library Chatbot</p>
+      </div>
+    </div>
+    """
+
+    plain_body = (
+        f"Hi {staff_name},\n\n"
+        f"No action needed — {claimed_by} has already joined the chat and is helping the patron.\n"
+    )
+    if session_id:
+        plain_body += f"Session: {session_id[:16]}…\n"
+    plain_body += "\n— Lorma Library Chatbot"
+
+    sender = smtp_email or os.environ.get("SMTP_EMAIL", "noreply@example.com")
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"Lorma Library Chatbot <{sender}>"
+    msg["To"] = recipient_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(plain_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    ok = _send_email(smtp_email, smtp_password, msg)
+    if ok:
+        logger.info("Claimed notification sent to %s (%s) — claimed by %s", staff_name, recipient_email, claimed_by)
+    return ok
+
+
 def send_ntfy_notification(
     ntfy_topic: str,
     session_id: str,

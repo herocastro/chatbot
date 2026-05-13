@@ -756,16 +756,69 @@ class ClaimRequest(BaseModel):
     username: str
 
 
-@router.post("/live-chat/{live_chat_id}/claim")
+def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore) -> None:
+    """Send 'session already claimed' emails to all other active staff contacts.
+
+    Called after a successful claim so librarians who received the initial
+    notification know they don't need to join.
+    """
+    smtp_email = os.environ.get("SMTP_EMAIL", "")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    has_service_account = bool(
+        os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        or os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+    )
+    if not smtp_email or (not smtp_password and not has_service_account):
+        return  # Email not configured — skip silently
+
+    # Resolve the parent session_id for the email body
+    try:
+        lc_row = store._get_connection().execute(
+            "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
+            (live_chat_id,),
+        ).fetchone()
+        session_id = lc_row["parent_session_id"] if lc_row else ""
+    except Exception:
+        session_id = ""
+
+    try:
+        from app.staff_routes import _get_store as _get_ss
+        from app.email_notify import send_claimed_email, _use_service_account
+        contacts = _get_ss().get_active_contacts()
+        for c in contacts:
+            # Skip the librarian who just claimed it
+            if c["name"].strip().lower() == claimer.strip().lower():
+                continue
+            try:
+                send_claimed_email(
+                    smtp_email=smtp_email,
+                    smtp_password=smtp_password,
+                    recipient_email=c["email"],
+                    staff_name=c["name"],
+                    claimed_by=claimer,
+                    session_id=session_id,
+                )
+            except Exception:
+                logger.exception("Failed to send claimed notification to %s", c["email"])
+    except Exception:
+        logger.exception("Failed to send claimed notifications for live chat %s", live_chat_id)
+
+
+
 async def claim_live_chat(live_chat_id: str, request: ClaimRequest):
     """Claim a live chat session."""
     store = _get_store()
     if not request.username or not request.username.strip():
         return JSONResponse(status_code=400, content={"error": "Username is required"})
     try:
-        result = store.claim_live_chat(live_chat_id, request.username.strip())
+        claimer = request.username.strip()
+        result = store.claim_live_chat(live_chat_id, claimer)
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
+
+        # Notify all other active staff that this session is now being handled
+        _notify_others_claimed(live_chat_id, claimer, store)
+
         return {"status": "ok"}
     except Exception:
         logger.exception("Failed to claim live chat %s", live_chat_id)
@@ -779,11 +832,14 @@ async def claim_handoff(session_id: str, request: ClaimRequest):
     if not request.username or not request.username.strip():
         return JSONResponse(status_code=400, content={"error": "Username is required"})
     try:
+        claimer = request.username.strip()
         live_chat = store.get_active_live_chat(session_id)
         if live_chat:
-            result = store.claim_live_chat(live_chat["id"], request.username.strip())
+            result = store.claim_live_chat(live_chat["id"], claimer)
+            if result["ok"]:
+                _notify_others_claimed(live_chat["id"], claimer, store)
         else:
-            result = store.claim_handoff(session_id, request.username.strip())
+            result = store.claim_handoff(session_id, claimer)
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
         return {"status": "ok"}
