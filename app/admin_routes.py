@@ -769,28 +769,41 @@ def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore)
         or os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
     )
     if not smtp_email or (not smtp_password and not has_service_account):
-        return  # Email not configured — skip silently
+        logger.warning("_notify_others_claimed: email not configured, skipping")
+        return
 
     # Resolve the parent session_id for the email body
+    session_id = ""
     try:
-        lc_row = store._get_connection().execute(
-            "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
-            (live_chat_id,),
-        ).fetchone()
-        session_id = lc_row["parent_session_id"] if lc_row else ""
+        conn = store._get_connection()
+        try:
+            lc_row = conn.execute(
+                "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
+                (live_chat_id,),
+            ).fetchone()
+            session_id = lc_row["parent_session_id"] if lc_row else ""
+        finally:
+            conn.close()
     except Exception:
-        session_id = ""
+        logger.exception("_notify_others_claimed: failed to resolve session_id for live chat %s", live_chat_id)
 
     try:
         from app.staff_routes import _get_store as _get_ss
-        from app.email_notify import send_claimed_email, _use_service_account
+        from app.email_notify import send_claimed_email
         contacts = _get_ss().get_active_contacts()
+        logger.info("_notify_others_claimed: notifying %d contacts (claimer=%s)", len(contacts), claimer)
         for c in contacts:
-            # Skip the librarian who just claimed it
-            if c["name"].strip().lower() == claimer.strip().lower():
+            # Skip the librarian who just claimed it — match on email or name
+            # The claimer value is a username; contacts have name+email.
+            # We skip by email match (most reliable) or name match as fallback.
+            contact_name_lower = c["name"].strip().lower()
+            contact_email_lower = c["email"].strip().lower()
+            claimer_lower = claimer.strip().lower()
+            if contact_name_lower == claimer_lower or contact_email_lower == claimer_lower:
+                logger.info("_notify_others_claimed: skipping claimer %s", c["email"])
                 continue
             try:
-                send_claimed_email(
+                ok = send_claimed_email(
                     smtp_email=smtp_email,
                     smtp_password=smtp_password,
                     recipient_email=c["email"],
@@ -798,10 +811,11 @@ def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore)
                     claimed_by=claimer,
                     session_id=session_id,
                 )
+                logger.info("_notify_others_claimed: sent to %s (%s) ok=%s", c["name"], c["email"], ok)
             except Exception:
-                logger.exception("Failed to send claimed notification to %s", c["email"])
+                logger.exception("_notify_others_claimed: failed to send to %s", c["email"])
     except Exception:
-        logger.exception("Failed to send claimed notifications for live chat %s", live_chat_id)
+        logger.exception("_notify_others_claimed: failed for live chat %s", live_chat_id)
 
 
 
@@ -816,8 +830,14 @@ async def claim_live_chat(live_chat_id: str, request: ClaimRequest):
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
 
-        # Notify all other active staff that this session is now being handled
-        _notify_others_claimed(live_chat_id, claimer, store)
+        # Notify all other active staff in a background thread so it doesn't
+        # block the response or get killed by Vercel's serverless timeout
+        import threading
+        threading.Thread(
+            target=_notify_others_claimed,
+            args=(live_chat_id, claimer, store),
+            daemon=True,
+        ).start()
 
         return {"status": "ok"}
     except Exception:
@@ -837,7 +857,12 @@ async def claim_handoff(session_id: str, request: ClaimRequest):
         if live_chat:
             result = store.claim_live_chat(live_chat["id"], claimer)
             if result["ok"]:
-                _notify_others_claimed(live_chat["id"], claimer, store)
+                import threading
+                threading.Thread(
+                    target=_notify_others_claimed,
+                    args=(live_chat["id"], claimer, store),
+                    daemon=True,
+                ).start()
         else:
             result = store.claim_handoff(session_id, claimer)
         if not result["ok"]:
