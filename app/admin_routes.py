@@ -819,6 +819,7 @@ def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore)
 
 
 
+@router.post("/live-chat/{live_chat_id}/claim")
 async def claim_live_chat(live_chat_id: str, request: ClaimRequest):
     """Claim a live chat session."""
     store = _get_store()
