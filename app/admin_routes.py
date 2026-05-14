@@ -772,33 +772,54 @@ def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore)
         logger.warning("_notify_others_claimed: email not configured, skipping")
         return
 
-    # Resolve the parent session_id for the email body
+    # Resolve the parent session_id and display_name for the email body
     session_id = ""
+    display_name = ""
     try:
         conn = store._get_connection()
         try:
-            lc_row = conn.execute(
-                "SELECT parent_session_id FROM live_chat_sessions WHERE id = ?",
+            row = conn.execute(
+                """SELECT lc.parent_session_id, s.display_name
+                   FROM live_chat_sessions lc
+                   JOIN sessions s ON s.session_id = lc.parent_session_id
+                   WHERE lc.id = ?""",
                 (live_chat_id,),
             ).fetchone()
-            session_id = lc_row["parent_session_id"] if lc_row else ""
+            if row:
+                session_id = row["parent_session_id"]
+                display_name = row["display_name"] or ""
         finally:
             conn.close()
     except Exception:
-        logger.exception("_notify_others_claimed: failed to resolve session_id for live chat %s", live_chat_id)
+        logger.exception("_notify_others_claimed: failed to resolve session info for live chat %s", live_chat_id)
+
+    # Fetch the current queue so the email can show which sessions are still waiting
+    waiting_sessions = []
+    try:
+        queue = store.get_waiting_live_chats(page=1, page_size=20)
+        # Exclude the session that was just claimed
+        waiting_sessions = [
+            s for s in queue.get("sessions", [])
+            if s["live_chat_id"] != live_chat_id
+        ]
+    except Exception:
+        logger.exception("_notify_others_claimed: failed to fetch waiting queue")
+
+    admin_url = os.environ.get("CHATBOT_PUBLIC_URL", "").rstrip("/")
 
     try:
         from app.staff_routes import _get_store as _get_ss
         from app.email_notify import send_claimed_email
         contacts = _get_ss().get_active_contacts()
-        logger.info("_notify_others_claimed: notifying %d contacts (claimer=%s)", len(contacts), claimer)
+        logger.info("_notify_others_claimed: %d contacts, claimer=%r, session=%s display=%r waiting=%d",
+                    len(contacts), claimer, session_id, display_name, len(waiting_sessions))
+        claimer_lower = claimer.strip().lower()
         for c in contacts:
             # Skip the librarian who just claimed it — match on email or name
             # The claimer value is a username; contacts have name+email.
             # We skip by email match (most reliable) or name match as fallback.
             contact_name_lower = c["name"].strip().lower()
             contact_email_lower = c["email"].strip().lower()
-            claimer_lower = claimer.strip().lower()
             if contact_name_lower == claimer_lower or contact_email_lower == claimer_lower:
                 logger.info("_notify_others_claimed: skipping claimer %s", c["email"])
                 continue
@@ -810,12 +831,16 @@ def _notify_others_claimed(live_chat_id: str, claimer: str, store: SessionStore)
                     staff_name=c["name"],
                     claimed_by=claimer,
                     session_id=session_id,
+                    display_name=display_name,
+                    waiting_sessions=waiting_sessions,
+                    admin_url=admin_url,
                 )
                 logger.info("_notify_others_claimed: sent to %s (%s) ok=%s", c["name"], c["email"], ok)
             except Exception:
                 logger.exception("_notify_others_claimed: failed to send to %s", c["email"])
     except Exception:
         logger.exception("_notify_others_claimed: failed for live chat %s", live_chat_id)
+
 
 
 

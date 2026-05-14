@@ -226,20 +226,68 @@ def send_claimed_email(
     staff_name: str,
     claimed_by: str,
     session_id: str,
+    display_name: str = "",
+    waiting_sessions: list | None = None,
+    admin_url: str = "",
 ) -> bool:
     """Notify a librarian that another librarian has already claimed the session."""
-    subject = f"📚 Session already being handled by {claimed_by}"
+    patron_label = display_name or (session_id[:16] + "…" if session_id else "Unknown")
+    subject = f"📚 {patron_label} is already being helped by {claimed_by}"
 
-    session_note = f'<p style="color:#7f8c8d;font-size:0.85rem;margin:0 0 20px">Session: {session_id[:16]}…</p>' if session_id else ""
+    # Build waiting sessions block
+    waiting_html = ""
+    waiting_plain = ""
+    if waiting_sessions:
+        rows_html = "".join(
+            f'<tr><td style="padding:6px 10px;border-bottom:1px solid #ecf0f1">{w["display_name"] or w["session_id"][:16] + "…"}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #ecf0f1;text-align:center">{w["message_count"]} msgs</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #ecf0f1;text-align:center">'
+            f'{"<span style=\'color:#e67e22\'>Waiting</span>" if not w["staff_username"] else "<span style=\'color:#27ae60\'>" + w["staff_username"] + "</span>"}'
+            f'</td></tr>'
+            for w in waiting_sessions
+        )
+        waiting_html = f"""
+        <div style="margin-top:20px;border-top:1px solid #ecf0f1;padding-top:16px">
+          <p style="color:#555;font-size:0.88rem;margin:0 0 10px;font-weight:600">Other sessions still in queue:</p>
+          <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+            <thead>
+              <tr style="background:#f4f6f9">
+                <th style="padding:6px 10px;text-align:left;color:#7f8c8d;font-weight:600">Patron</th>
+                <th style="padding:6px 10px;text-align:center;color:#7f8c8d;font-weight:600">Msgs</th>
+                <th style="padding:6px 10px;text-align:center;color:#7f8c8d;font-weight:600">Status</th>
+              </tr>
+            </thead>
+            <tbody>{rows_html}</tbody>
+          </table>
+        </div>"""
+        waiting_plain = "\n\nOther sessions still in queue:\n" + "\n".join(
+            f"  • {w['display_name'] or w['session_id'][:16] + '…'} — "
+            f"{'Waiting' if not w['staff_username'] else 'With ' + w['staff_username']}"
+            for w in waiting_sessions
+        )
+
+    chat_link = f"{admin_url}/chat/" if admin_url else ""
+    join_btn = ""
+    if chat_link:
+        join_btn = f"""
+        <div style="text-align:center;margin:20px 0">
+          <a href="{chat_link}" style="display:inline-block;background:#2c3e50;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:0.95rem;font-weight:600">
+            💬 View Live Chat Queue
+          </a>
+        </div>"""
 
     html_body = f"""
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:20px">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:20px">
       <div style="background:#27ae60;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;text-align:center">
         <h2 style="margin:0;font-size:1.1rem">✅ Patron Being Helped</h2>
       </div>
       <div style="background:#fff;border:1px solid #ecf0f1;border-top:none;padding:24px 20px;border-radius:0 0 8px 8px">
-        <p style="color:#333;font-size:0.95rem;margin:0 0 16px">Hi <strong>{staff_name}</strong>, no action needed — <strong>{claimed_by}</strong> has already joined the chat and is helping the patron.</p>
-        {session_note}
+        <p style="color:#333;font-size:0.95rem;margin:0 0 12px">Hi <strong>{staff_name}</strong>,</p>
+        <p style="color:#333;font-size:0.95rem;margin:0 0 16px">
+          <strong>{claimed_by}</strong> has already joined the chat with <strong>{patron_label}</strong> — no action needed for this session.
+        </p>
+        {waiting_html}
+        {join_btn}
         <p style="color:#bdc3c7;font-size:0.78rem;text-align:center;margin:16px 0 0">— Lorma Library Chatbot</p>
       </div>
     </div>
@@ -247,11 +295,9 @@ def send_claimed_email(
 
     plain_body = (
         f"Hi {staff_name},\n\n"
-        f"No action needed — {claimed_by} has already joined the chat and is helping the patron.\n"
+        f"{claimed_by} has already joined the chat with {patron_label} — no action needed for this session."
+        f"{waiting_plain}\n\n— Lorma Library Chatbot"
     )
-    if session_id:
-        plain_body += f"Session: {session_id[:16]}…\n"
-    plain_body += "\n— Lorma Library Chatbot"
 
     sender = smtp_email or os.environ.get("SMTP_EMAIL", "noreply@example.com")
     msg = MIMEMultipart("alternative")
