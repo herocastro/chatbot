@@ -104,11 +104,16 @@ def _send_email(smtp_email: str, smtp_password: str, msg: MIMEMultipart) -> bool
 
 
 def _build_chat_link(admin_url: str, session_id: str, staff_name: str = "") -> str:
-    """Build a live chat URL with staff name for direct access."""
+    """Build a live chat queue URL so librarians see all waiting sessions first.
+
+    The session_id is no longer used to jump directly into a specific chat —
+    librarians should pick from the queue so they can see what is already
+    being handled by colleagues.
+    """
     from urllib.parse import quote
-    link = f"{admin_url}/chat/?session={session_id}"
+    link = f"{admin_url}/chat/"
     if staff_name:
-        link += f"&name={quote(staff_name)}"
+        link += f"?name={quote(staff_name)}"
     return link
 
 
@@ -134,10 +139,10 @@ def send_handoff_email(
       </div>
       <div style="background:#fff;border:1px solid #ecf0f1;border-top:none;padding:24px 20px;border-radius:0 0 8px 8px">
         <p style="color:#333;font-size:0.95rem;margin:0 0 16px">A patron is waiting to chat with a librarian.</p>
-        <p style="color:#7f8c8d;font-size:0.85rem;margin:0 0 20px">Session: {session_id[:16]}…</p>
+        <p style="color:#555;font-size:0.88rem;margin:0 0 20px">Open the live chat queue to see all waiting patrons and pick up the ones that haven't been claimed yet.</p>
         <div style="text-align:center;margin:20px 0">
           <a href="{chat_link}" style="display:inline-block;background:#2c3e50;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:0.95rem;font-weight:600">
-            💬 Join Live Chat
+            📋 View Live Chat Queue
           </a>
         </div>
         <p style="color:#bdc3c7;font-size:0.78rem;text-align:center;margin:16px 0 0">— Lorma Library Chatbot</p>
@@ -147,8 +152,7 @@ def send_handoff_email(
 
     plain_body = (
         f"A patron has requested to speak with a librarian.\n\n"
-        f"Session: {session_id[:16]}…\n\n"
-        f"Join the live chat:\n{chat_link}\n\n"
+        f"Open the live chat queue to see all waiting patrons and pick up unclaimed sessions:\n{chat_link}\n\n"
         f"— Lorma Library Chatbot"
     )
 
@@ -178,21 +182,17 @@ def send_staff_notify_email(
     chat_link = _build_chat_link(admin_url, session_id, staff_name) if session_id else f"{admin_url}/chat/"
     subject = f"📚 {staff_name}, a patron needs your help"
 
-    session_note = ""
-    if session_id:
-        session_note = f'<p style="color:#7f8c8d;font-size:0.85rem;margin:0 0 20px">Session: {session_id[:16]}…</p>'
-
     html_body = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:20px">
       <div style="background:#2c3e50;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;text-align:center">
         <h2 style="margin:0;font-size:1.1rem">📚 Librarian Needed</h2>
       </div>
       <div style="background:#fff;border:1px solid #ecf0f1;border-top:none;padding:24px 20px;border-radius:0 0 8px 8px">
-        <p style="color:#333;font-size:0.95rem;margin:0 0 16px">Hi <strong>{staff_name}</strong>, a patron is waiting to chat with a librarian. Please join the live chat when you're available.</p>
-        {session_note}
+        <p style="color:#333;font-size:0.95rem;margin:0 0 16px">Hi <strong>{staff_name}</strong>, a patron is waiting to chat with a librarian.</p>
+        <p style="color:#555;font-size:0.88rem;margin:0 0 20px">Open the live chat queue to see all waiting patrons and pick up the ones that haven't been claimed yet.</p>
         <div style="text-align:center;margin:20px 0">
           <a href="{chat_link}" style="display:inline-block;background:#2c3e50;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:0.95rem;font-weight:600">
-            💬 Join Live Chat
+            📋 View Live Chat Queue
           </a>
         </div>
         <p style="color:#bdc3c7;font-size:0.78rem;text-align:center;margin:16px 0 0">— Lorma Library Chatbot</p>
@@ -201,9 +201,7 @@ def send_staff_notify_email(
     """
 
     plain_body = f"Hi {staff_name},\n\nA patron is waiting to chat with a librarian.\n"
-    if session_id:
-        plain_body += f"Session: {session_id[:16]}…\n"
-    plain_body += f"\nJoin the live chat:\n{chat_link}\n\n— Lorma Library Chatbot"
+    plain_body += f"\nOpen the live chat queue to see all waiting patrons and pick up unclaimed sessions:\n{chat_link}\n\n— Lorma Library Chatbot"
 
     sender = smtp_email or os.environ.get("SMTP_EMAIL", "noreply@example.com")
     msg = MIMEMultipart("alternative")
@@ -337,7 +335,7 @@ def send_ntfy_notification(
                 "Click": chat_link,
                 "Tags": "books,speech_balloon",
             },
-            content=f"A patron is waiting for help.\nSession: {session_id[:16]}…\nTap to join the live chat.",
+            content="A patron is waiting for help. Tap to open the live chat queue and pick up unclaimed sessions.",
             timeout=10.0,
         )
         logger.info("ntfy notification sent for session %s", session_id)
