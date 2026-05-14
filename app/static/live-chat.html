@@ -149,10 +149,9 @@
     if (!myName) { nameInput.style.borderColor = "#e74c3c"; nameInput.focus(); return; }
     localStorage.setItem(STORE_KEY, myName);
 
-    // Clean URL
+    // Keep ?name= in the URL so it survives a page refresh (localStorage may not always be available)
     if (window.history.replaceState) {
-      var clean = window.location.pathname;
-      if (urlSession) clean += "?session=" + encodeURIComponent(urlSession);
+      var clean = window.location.pathname + "?name=" + encodeURIComponent(myName);
       window.history.replaceState({}, "", clean);
     }
 
@@ -288,6 +287,12 @@
   }
 
   async function claimAndStart() {
+    // Reset per-session state so messages load cleanly for the new session
+    lastRenderedTs = 0;
+    _libSeenIds = new Set();
+    chatMessages.innerHTML = '<div class="empty-state">Loading messages…</div>';
+    document.getElementById("input-bar").style.display = "";
+    endBtn.style.display = "";
     try {
       var resp = await fetch("/admin/api/live-chat/" + encodeURIComponent(liveChatId) + "/claim", {
         method: "POST",
@@ -312,7 +317,6 @@
       chatStatus.innerHTML = "Connected as <strong>" + esc(myName) + "</strong>";
     } catch(e) { chatStatus.textContent = "Connected"; }
     await loadPatronInfo();
-    lastRenderedTs = 0;
     for (var _attempt = 0; _attempt < 3; _attempt++) {
       await loadMessages();
       if (lastRenderedTs > 0) break;
