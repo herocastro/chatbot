@@ -15,6 +15,29 @@
     .name-card input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; margin-bottom: 14px; }
     .name-card button { width: 100%; padding: 10px; border: none; border-radius: 4px; background: #2c3e50; color: #fff; font-size: 0.95rem; cursor: pointer; }
     .name-card button:hover { background: #34495e; }
+
+    /* Queue picker */
+    .queue-view { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .queue-header h2 { font-size: 1.05rem; color: #2c3e50; }
+    .queue-header .refresh-btn { padding: 6px 14px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 0.82rem; cursor: pointer; color: #555; }
+    .queue-header .refresh-btn:hover { background: #f4f6f9; }
+    .queue-list { display: flex; flex-direction: column; gap: 10px; }
+    .queue-card { background: #fff; border-radius: 8px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border: 2px solid transparent; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: border-color 0.15s; }
+    .queue-card:hover { border-color: #2c3e50; }
+    .queue-card.claimed { opacity: 0.6; }
+    .queue-card-info { flex: 1; min-width: 0; }
+    .queue-card-name { font-weight: 600; font-size: 0.95rem; color: #2c3e50; }
+    .queue-card-meta { font-size: 0.8rem; color: #7f8c8d; margin-top: 2px; }
+    .queue-card-status { font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+    .status-waiting { background: #fef3cd; color: #856404; }
+    .status-claimed { background: #d1e7dd; color: #0a5c36; }
+    .queue-join-btn { padding: 8px 18px; border: none; border-radius: 6px; background: #2c3e50; color: #fff; font-size: 0.85rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .queue-join-btn:hover { background: #34495e; }
+    .queue-join-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .queue-empty { text-align: center; color: #7f8c8d; padding: 40px 20px; font-size: 0.9rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+    /* Chat view */
     .chat-header { background: #fff; padding: 12px 16px; border-bottom: 1px solid #ecf0f1; font-size: 0.9rem; color: #2c3e50; display: flex; align-items: center; justify-content: space-between; }
     .chat-messages { flex: 1; overflow-y: auto; padding: 16px; background: #f4f6f9; }
     .msg { margin-bottom: 12px; max-width: 85%; }
@@ -33,25 +56,43 @@
     #send-btn:hover { background: #34495e; }
     .hidden { display: none !important; }
     .empty-state { text-align: center; color: #7f8c8d; padding: 40px 20px; font-size: 0.9rem; }
+    .back-to-queue { padding: 6px 14px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 0.82rem; cursor: pointer; color: #555; }
+    .back-to-queue:hover { background: #f4f6f9; }
   </style>
 </head>
 <body>
   <header><h1>📚 Lorma Library — Live Chat</h1></header>
 
-  <!-- Name prompt (no API key needed) -->
+  <!-- Step 1: Name prompt -->
   <div class="container" id="name-view">
     <div class="name-card">
-      <h2>💬 Enter your name to join</h2>
+      <h2>💬 Enter your name to continue</h2>
       <input type="text" id="lc-name" placeholder="Your name (e.g. Maria Santos)" autofocus>
-      <button id="lc-join-btn" type="button">Join Chat</button>
+      <button id="lc-join-btn" type="button">Continue</button>
     </div>
   </div>
 
-  <!-- Chat view -->
+  <!-- Step 2: Queue picker (shown when no specific session in URL) -->
+  <div id="queue-view" class="hidden">
+    <div class="queue-view">
+      <div class="queue-header">
+        <h2>📋 Select a patron to help</h2>
+        <button class="refresh-btn" id="queue-refresh-btn" type="button">↻ Refresh</button>
+      </div>
+      <div class="queue-list" id="queue-list">
+        <div class="queue-empty">Loading sessions…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Chat view -->
   <div id="chat-view" class="hidden" style="height:calc(100vh - 52px);display:flex;flex-direction:column">
     <div class="chat-header">
       <span id="chat-status">Connecting…</span>
-      <button id="end-btn" type="button" style="padding:6px 14px;border:none;border-radius:4px;background:#e74c3c;color:#fff;font-size:0.8rem;cursor:pointer">End Chat</button>
+      <div style="display:flex;gap:8px">
+        <button class="back-to-queue hidden" id="back-to-queue-btn" type="button">← Queue</button>
+        <button id="end-btn" type="button" style="padding:6px 14px;border:none;border-radius:4px;background:#e74c3c;color:#fff;font-size:0.8rem;cursor:pointer">End Chat</button>
+      </div>
     </div>
     <div class="chat-messages" id="chat-messages">
       <div class="empty-state">Loading messages…</div>
@@ -64,124 +105,158 @@
 
 <script>
 (function() {
-  // API key injected by server — no login needed
   var apiKey = "__INJECTED_API_KEY__";
 
-  var nameView = document.getElementById("name-view");
-  var chatView = document.getElementById("chat-view");
-  var nameInput = document.getElementById("lc-name");
-  var joinBtn = document.getElementById("lc-join-btn");
-  var chatStatus = document.getElementById("chat-status");
-  var chatMessages = document.getElementById("chat-messages");
-  var replyInput = document.getElementById("reply-input");
-  var sendBtn = document.getElementById("send-btn");
-  var endBtn = document.getElementById("end-btn");
+  var nameView    = document.getElementById("name-view");
+  var queueView   = document.getElementById("queue-view");
+  var chatView    = document.getElementById("chat-view");
+  var nameInput   = document.getElementById("lc-name");
+  var joinBtn     = document.getElementById("lc-join-btn");
+  var queueList   = document.getElementById("queue-list");
+  var chatStatus  = document.getElementById("chat-status");
+  var chatMessages= document.getElementById("chat-messages");
+  var replyInput  = document.getElementById("reply-input");
+  var sendBtn     = document.getElementById("send-btn");
+  var endBtn      = document.getElementById("end-btn");
+  var backBtn     = document.getElementById("back-to-queue-btn");
+  var refreshBtn  = document.getElementById("queue-refresh-btn");
 
   var myName = "";
   var sessionId = "";
   var liveChatId = "";
   var pollTimer = null;
+  var queuePollTimer = null;
 
   var params = new URLSearchParams(window.location.search);
-  sessionId = params.get("session") || "";
+  var urlSession = params.get("session") || "";
+  var urlName    = params.get("name") || "";
 
-  // Restore name + session from localStorage so reload/new-tab skips the name prompt
   var STORE_KEY = "lc_librarian_name";
-  var STORE_SID  = "lc_librarian_session";
   var storedName = localStorage.getItem(STORE_KEY) || "";
-  var storedSid  = localStorage.getItem(STORE_SID) || "";
-  // URL params take priority (email link)
-  var urlName = params.get("name") || "";
   var initialName = urlName || storedName;
-  // If no session in URL but we have one stored, restore it
-  if (!sessionId && storedSid) sessionId = storedSid;
   if (initialName) nameInput.value = initialName;
 
   joinBtn.addEventListener("click", startChat);
   nameInput.addEventListener("keydown", function(e) { if (e.key === "Enter") startChat(); });
+  refreshBtn.addEventListener("click", function() { loadQueue(); });
+  backBtn.addEventListener("click", function() { showQueueView(); });
 
-  // Auto-join if name is already known
+  // Auto-proceed if name is known
   if (initialName) startChat();
 
-  async function startChat() {
+  function startChat() {
     myName = nameInput.value.trim();
     if (!myName) { nameInput.style.borderColor = "#e74c3c"; nameInput.focus(); return; }
-
-    // Persist name + session so reload/new-tab skips this form
     localStorage.setItem(STORE_KEY, myName);
-    if (sessionId) localStorage.setItem(STORE_SID, sessionId);
 
-    nameView.classList.add("hidden");
-    chatView.classList.remove("hidden");
-    chatView.style.display = "flex";
-
-    // Clean URL — keep session param but drop name (it's now in localStorage)
+    // Clean URL
     if (window.history.replaceState) {
       var clean = window.location.pathname;
-      if (sessionId) clean += "?session=" + encodeURIComponent(sessionId);
+      if (urlSession) clean += "?session=" + encodeURIComponent(urlSession);
       window.history.replaceState({}, "", clean);
     }
 
-    if (sessionId) {
-      await joinSession();
+    nameView.classList.add("hidden");
+
+    if (urlSession) {
+      // Came from a specific session email link — go straight to that session
+      sessionId = urlSession;
+      showChatView();
+      joinSession();
     } else {
-      await findWaitingSession();
+      // Came from "View Live Chat Queue" — show the picker
+      showQueueView();
     }
   }
 
-  async function findWaitingSession() {
+  // ----------------------------------------------------------------
+  // Queue picker
+  // ----------------------------------------------------------------
+
+  function showQueueView() {
+    stopPoll();
+    chatView.classList.add("hidden");
+    queueView.classList.remove("hidden");
+    sessionId = "";
+    liveChatId = "";
+    loadQueue();
+    // Auto-refresh queue every 8s
+    if (queuePollTimer) clearInterval(queuePollTimer);
+    queuePollTimer = setInterval(loadQueue, 8000);
+  }
+
+  async function loadQueue() {
     try {
       var resp = await fetch("/admin/api/handoff-sessions?page_size=50", { headers: { "X-Admin-Key": apiKey } });
       var data = await resp.json();
-      var sessions = data.sessions || [];
-      // Only pick sessions that are genuinely unclaimed
-      var waiting = sessions.filter(function(s) { return !s.staff_username; });
-      if (waiting.length > 0) {
-        sessionId = waiting[0].session_id;
-        liveChatId = waiting[0].live_chat_id;
-        await claimAndStart();
-      } else if (sessions.length > 0) {
-        // All sessions are already claimed — show that to the librarian
-        chatStatus.textContent = "All sessions are being handled";
-        chatMessages.innerHTML =
-          '<div class="empty-state">' +
-          '<div style="font-size:1.5em;margin-bottom:12px">✅</div>' +
-          '<div style="font-size:1.05em;color:#2c3e50;margin-bottom:8px">All patrons are being helped</div>' +
-          '<div style="color:#7f8c8d">Every active session already has a librarian. Check back shortly.</div>' +
-          '</div>';
-        document.getElementById("input-bar").style.display = "none";
-        document.getElementById("end-btn").style.display = "none";
-        // Keep polling in case a new unclaimed session appears
-        pollTimer = setInterval(async function() {
-          var r = await fetch("/admin/api/handoff-sessions?page_size=50", { headers: { "X-Admin-Key": apiKey } });
-          var d = await r.json();
-          var unclaimed = (d.sessions || []).filter(function(s) { return !s.staff_username; });
-          if (unclaimed.length > 0) {
-            clearInterval(pollTimer);
-            sessionId = unclaimed[0].session_id;
-            liveChatId = unclaimed[0].live_chat_id;
-            chatMessages.innerHTML = "";
-            document.getElementById("input-bar").style.display = "";
-            document.getElementById("end-btn").style.display = "";
-            await claimAndStart();
-          }
-        }, 5000);
-      } else {
-        chatStatus.textContent = "No patrons waiting";
-        chatMessages.innerHTML = '<div class="empty-state">No active handoff requests right now.</div>';
-        pollTimer = setInterval(async function() {
-          var r = await fetch("/admin/api/handoff-sessions?page_size=1", { headers: { "X-Admin-Key": apiKey } });
-          var d = await r.json();
-          var unclaimed = (d.sessions || []).filter(function(s) { return !s.staff_username; });
-          if (unclaimed.length > 0) {
-            clearInterval(pollTimer);
-            sessionId = unclaimed[0].session_id;
-            liveChatId = unclaimed[0].live_chat_id;
-            await claimAndStart();
-          }
-        }, 5000);
+      renderQueue(data.sessions || []);
+    } catch(e) {
+      queueList.innerHTML = '<div class="queue-empty">Error loading sessions.</div>';
+    }
+  }
+
+  function renderQueue(sessions) {
+    if (!sessions.length) {
+      queueList.innerHTML = '<div class="queue-empty">No active patron requests right now.<br>This page refreshes automatically.</div>';
+      return;
+    }
+    queueList.innerHTML = "";
+    sessions.forEach(function(s) {
+      var isClaimed = !!s.staff_username;
+      var card = document.createElement("div");
+      card.className = "queue-card" + (isClaimed ? " claimed" : "");
+
+      var statusHtml = isClaimed
+        ? '<span class="queue-card-status status-claimed">With ' + esc(s.staff_username) + '</span>'
+        : '<span class="queue-card-status status-waiting">⏳ Waiting</span>';
+
+      var msgCount = s.message_count || 0;
+      var timeAgo = s.last_activity ? fmtAgo(s.last_activity) : "";
+
+      card.innerHTML =
+        '<div class="queue-card-info">' +
+          '<div class="queue-card-name">' + esc(s.display_name || s.session_id.substring(0, 16) + "…") + '</div>' +
+          '<div class="queue-card-meta">' + msgCount + ' messages' + (timeAgo ? ' · ' + timeAgo : '') + '</div>' +
+        '</div>' +
+        statusHtml +
+        '<button class="queue-join-btn"' + (isClaimed ? ' disabled' : '') + '>' +
+          (isClaimed ? 'Taken' : 'Join Chat') +
+        '</button>';
+
+      if (!isClaimed) {
+        card.querySelector(".queue-join-btn").addEventListener("click", function() {
+          if (queuePollTimer) { clearInterval(queuePollTimer); queuePollTimer = null; }
+          sessionId = s.session_id;
+          liveChatId = s.live_chat_id;
+          showChatView();
+          claimAndStart();
+        });
       }
-    } catch(e) { chatStatus.textContent = "Error loading sessions"; }
+
+      queueList.appendChild(card);
+    });
+  }
+
+  function fmtAgo(ts) {
+    var diff = Math.floor(Date.now() / 1000 - ts);
+    if (diff < 60) return diff + "s ago";
+    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+    return Math.floor(diff / 3600) + "h ago";
+  }
+
+  // ----------------------------------------------------------------
+  // Chat view
+  // ----------------------------------------------------------------
+
+  function showChatView() {
+    queueView.classList.add("hidden");
+    chatView.classList.remove("hidden");
+    chatView.style.display = "flex";
+    // Show back button only when there's no specific session in URL
+    // (i.e. they came from the queue picker, not a direct email link)
+    if (!urlSession) {
+      backBtn.classList.remove("hidden");
+    }
   }
 
   async function joinSession() {
@@ -192,7 +267,6 @@
       var match = sessions.find(function(s) { return s.session_id === sessionId; });
       if (match) {
         liveChatId = match.live_chat_id;
-        // If already claimed by someone else, show message instead of chat
         if (match.staff_username && match.staff_username !== myName) {
           chatStatus.textContent = "";
           chatMessages.innerHTML =
@@ -202,7 +276,7 @@
             '<div style="color:#7f8c8d">Another librarian is chatting with the patron.</div>' +
             '</div>';
           document.getElementById("input-bar").style.display = "none";
-          document.getElementById("end-btn").style.display = "none";
+          endBtn.style.display = "none";
           return;
         }
         await claimAndStart();
@@ -222,7 +296,6 @@
       });
       if (resp.status === 409) {
         var d = await resp.json();
-        // If already claimed by someone else — show read-only view
         if (d.claimed_by && d.claimed_by !== myName) {
           chatStatus.textContent = "";
           chatMessages.innerHTML =
@@ -232,19 +305,17 @@
             '<div style="color:#7f8c8d">Another librarian is chatting with the patron.</div>' +
             '</div>';
           document.getElementById("input-bar").style.display = "none";
-          document.getElementById("end-btn").style.display = "none";
+          endBtn.style.display = "none";
           return;
         }
-        // 409 but claimed by me (reload) — fall through and reconnect normally
       }
       chatStatus.innerHTML = "Connected as <strong>" + esc(myName) + "</strong>";
     } catch(e) { chatStatus.textContent = "Connected"; }
     await loadPatronInfo();
     lastRenderedTs = 0;
-    // Retry initial load up to 3 times to handle Vercel cold-start empty DB
     for (var _attempt = 0; _attempt < 3; _attempt++) {
       await loadMessages();
-      if (lastRenderedTs > 0) break; // got messages, stop retrying
+      if (lastRenderedTs > 0) break;
       await new Promise(function(r) { setTimeout(r, 1500); });
     }
     startPoll();
@@ -276,15 +347,14 @@
         '<div style="font-weight:600;font-size:0.9em">' + esc(info.patron_type) + '</div>' +
         (info.patron_details ? '<div style="opacity:0.88;font-size:0.82em">' + esc(info.patron_details) + '</div>' : '') +
       '</div>';
-    // Insert before chat messages
     chatMessages.parentNode.insertBefore(card, chatMessages);
   }
 
   var lastRenderedTs = 0;
-  var _libSeenIds = new Set(); // tracks message IDs/keys already rendered
+  var _libSeenIds = new Set();
   var _ablyClient = null;
 
-  function _initAblyLibrarian(liveChatId) {
+  function _initAblyLibrarian(lcId) {
     fetch("/api/ably-token")
       .then(function(r) { return r.json(); })
       .then(function(d) {
@@ -293,7 +363,7 @@
           try {
             if (_ablyClient) { try { _ablyClient.close(); } catch(e) {} }
             _ablyClient = new Ably.Realtime({ key: key, recover: function(_, cb) { cb(true); } });
-            var ch = _ablyClient.channels.get("live-chat:" + liveChatId);
+            var ch = _ablyClient.channels.get("live-chat:" + lcId);
             ch.subscribe("message", function(msg) {
               if (msg.data) appendNewMessages([msg.data]);
             });
@@ -348,18 +418,15 @@
       var key = m.id != null ? ("id:" + m.id) : (m.timestamp + "|" + m.content);
       _libSeenIds.add(key);
       if (m.timestamp > lastRenderedTs) lastRenderedTs = m.timestamp;
-
       if (m.role === "librarian") {
-        // Try to replace an optimistic bubble with the confirmed DB version
         var optimistics = chatMessages.querySelectorAll(".msg-optimistic");
         for (var i = 0; i < optimistics.length; i++) {
           if (optimistics[i].dataset.optimisticText === m.content) {
             optimistics[i].classList.remove("msg-optimistic");
-            return; // optimistic bubble stays, no duplicate
+            return;
           }
         }
       }
-
       var div = document.createElement("div");
       var cls = "msg ";
       var label = "";
@@ -400,7 +467,6 @@
   sendBtn.addEventListener("click", sendReply);
   replyInput.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); sendReply(); } });
 
-  // Send typing signal when librarian types
   var lastLibTyping = 0;
   replyInput.addEventListener("input", function() {
     if (!liveChatId || !replyInput.value.trim()) return;
@@ -419,13 +485,11 @@
     var text = replyInput.value.trim();
     if (!text || !liveChatId) return;
     replyInput.value = "";
-    // Show message instantly (optimistic UI)
     var div = document.createElement("div");
     div.className = "msg msg-librarian msg-optimistic";
     div.dataset.optimisticText = text;
     var time = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
     div.innerHTML = '<div class="msg-label" style="text-align:right">👩‍💼 ' + esc(myName) + ' · ' + time + '</div><div class="bubble">' + esc(text) + '</div>';
-    // Status indicator appended after the bubble
     var statusSpan = document.createElement("span");
     statusSpan.style.cssText = "font-size:.7rem;opacity:.5;display:block;text-align:right;margin-top:2px;padding-right:2px";
     statusSpan.textContent = "Sending…";
@@ -457,8 +521,11 @@
       chatStatus.textContent = "Chat ended";
       document.getElementById("input-bar").style.display = "none";
       stopPoll();
-      // Clear stored session so next reload starts fresh
       localStorage.removeItem("lc_librarian_session");
+      // Go back to queue after ending
+      if (!urlSession) {
+        setTimeout(function() { showQueueView(); }, 1500);
+      }
     } catch(e) {}
   });
 })();

@@ -267,6 +267,7 @@ def send_claimed_email(
         )
 
     # Include staff name in the queue link so they auto-join without typing
+    # No session param — this opens the queue picker, not a specific session
     from urllib.parse import quote as _quote
     if admin_url and staff_name:
         chat_link = f"{admin_url}/chat/?name={_quote(staff_name)}"
