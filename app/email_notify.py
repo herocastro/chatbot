@@ -266,7 +266,15 @@ def send_claimed_email(
             for w in waiting_sessions
         )
 
-    chat_link = f"{admin_url}/chat/" if admin_url else ""
+    # Include staff name in the queue link so they auto-join without typing
+    from urllib.parse import quote as _quote
+    if admin_url and staff_name:
+        chat_link = f"{admin_url}/chat/?name={_quote(staff_name)}"
+    elif admin_url:
+        chat_link = f"{admin_url}/chat/"
+    else:
+        chat_link = ""
+
     join_btn = ""
     if chat_link:
         join_btn = f"""

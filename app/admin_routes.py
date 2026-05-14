@@ -852,7 +852,9 @@ async def claim_live_chat(live_chat_id: str, request: ClaimRequest):
         return JSONResponse(status_code=400, content={"error": "Username is required"})
     try:
         claimer = request.username.strip()
+        logger.info("claim_live_chat: live_chat_id=%s claimer=%r", live_chat_id, claimer)
         result = store.claim_live_chat(live_chat_id, claimer)
+        logger.info("claim_live_chat: result=%s", result)
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
 
@@ -874,14 +876,17 @@ async def claim_handoff(session_id: str, request: ClaimRequest):
         return JSONResponse(status_code=400, content={"error": "Username is required"})
     try:
         claimer = request.username.strip()
+        logger.info("claim_handoff: session_id=%s claimer=%r", session_id, claimer)
         live_chat = store.get_active_live_chat(session_id)
         if live_chat:
             result = store.claim_live_chat(live_chat["id"], claimer)
+            logger.info("claim_handoff: live_chat claim result=%s", result)
             if result["ok"]:
                 # Notify synchronously before returning
                 _notify_others_claimed(live_chat["id"], claimer, store)
         else:
             result = store.claim_handoff(session_id, claimer)
+            logger.info("claim_handoff: session claim result=%s", result)
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
         return {"status": "ok"}
