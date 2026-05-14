@@ -201,13 +201,16 @@
     }
     queueList.innerHTML = "";
     sessions.forEach(function(s) {
-      var isClaimed = !!s.staff_username;
+      var isMine = s.staff_username && s.staff_username === myName;
+      var isClaimed = !!s.staff_username && !isMine;
       var card = document.createElement("div");
       card.className = "queue-card" + (isClaimed ? " claimed" : "");
 
-      var statusHtml = isClaimed
-        ? '<span class="queue-card-status status-claimed">With ' + esc(s.staff_username) + '</span>'
-        : '<span class="queue-card-status status-waiting">⏳ Waiting</span>';
+      var statusHtml = isMine
+        ? '<span class="queue-card-status status-claimed">You (active)</span>'
+        : isClaimed
+          ? '<span class="queue-card-status status-claimed">With ' + esc(s.staff_username) + '</span>'
+          : '<span class="queue-card-status status-waiting">⏳ Waiting</span>';
 
       var msgCount = s.message_count || 0;
       var timeAgo = s.last_activity ? fmtAgo(s.last_activity) : "";
@@ -219,7 +222,7 @@
         '</div>' +
         statusHtml +
         '<button class="queue-join-btn"' + (isClaimed ? ' disabled' : '') + '>' +
-          (isClaimed ? 'Taken' : 'Join Chat') +
+          (isMine ? 'Rejoin' : isClaimed ? 'Taken' : 'Join Chat') +
         '</button>';
 
       if (!isClaimed) {
