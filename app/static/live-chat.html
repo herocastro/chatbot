@@ -134,25 +134,49 @@
       var resp = await fetch("/admin/api/handoff-sessions?page_size=50", { headers: { "X-Admin-Key": apiKey } });
       var data = await resp.json();
       var sessions = data.sessions || [];
+      // Only pick sessions that are genuinely unclaimed
       var waiting = sessions.filter(function(s) { return !s.staff_username; });
       if (waiting.length > 0) {
         sessionId = waiting[0].session_id;
         liveChatId = waiting[0].live_chat_id;
         await claimAndStart();
       } else if (sessions.length > 0) {
-        sessionId = sessions[0].session_id;
-        liveChatId = sessions[0].live_chat_id;
-        await claimAndStart();
+        // All sessions are already claimed — show that to the librarian
+        chatStatus.textContent = "All sessions are being handled";
+        chatMessages.innerHTML =
+          '<div class="empty-state">' +
+          '<div style="font-size:1.5em;margin-bottom:12px">✅</div>' +
+          '<div style="font-size:1.05em;color:#2c3e50;margin-bottom:8px">All patrons are being helped</div>' +
+          '<div style="color:#7f8c8d">Every active session already has a librarian. Check back shortly.</div>' +
+          '</div>';
+        document.getElementById("input-bar").style.display = "none";
+        document.getElementById("end-btn").style.display = "none";
+        // Keep polling in case a new unclaimed session appears
+        pollTimer = setInterval(async function() {
+          var r = await fetch("/admin/api/handoff-sessions?page_size=50", { headers: { "X-Admin-Key": apiKey } });
+          var d = await r.json();
+          var unclaimed = (d.sessions || []).filter(function(s) { return !s.staff_username; });
+          if (unclaimed.length > 0) {
+            clearInterval(pollTimer);
+            sessionId = unclaimed[0].session_id;
+            liveChatId = unclaimed[0].live_chat_id;
+            chatMessages.innerHTML = "";
+            document.getElementById("input-bar").style.display = "";
+            document.getElementById("end-btn").style.display = "";
+            await claimAndStart();
+          }
+        }, 5000);
       } else {
         chatStatus.textContent = "No patrons waiting";
         chatMessages.innerHTML = '<div class="empty-state">No active handoff requests right now.</div>';
         pollTimer = setInterval(async function() {
           var r = await fetch("/admin/api/handoff-sessions?page_size=1", { headers: { "X-Admin-Key": apiKey } });
           var d = await r.json();
-          if (d.sessions && d.sessions.length > 0) {
+          var unclaimed = (d.sessions || []).filter(function(s) { return !s.staff_username; });
+          if (unclaimed.length > 0) {
             clearInterval(pollTimer);
-            sessionId = d.sessions[0].session_id;
-            liveChatId = d.sessions[0].live_chat_id;
+            sessionId = unclaimed[0].session_id;
+            liveChatId = unclaimed[0].live_chat_id;
             await claimAndStart();
           }
         }, 5000);
