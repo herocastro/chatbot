@@ -830,14 +830,9 @@ async def claim_live_chat(live_chat_id: str, request: ClaimRequest):
         if not result["ok"]:
             return JSONResponse(status_code=409, content=result)
 
-        # Notify all other active staff in a background thread so it doesn't
-        # block the response or get killed by Vercel's serverless timeout
-        import threading
-        threading.Thread(
-            target=_notify_others_claimed,
-            args=(live_chat_id, claimer, store),
-            daemon=True,
-        ).start()
+        # Notify synchronously before returning — Vercel kills background threads
+        # after the response is sent, so this must complete inline.
+        _notify_others_claimed(live_chat_id, claimer, store)
 
         return {"status": "ok"}
     except Exception:
@@ -857,12 +852,8 @@ async def claim_handoff(session_id: str, request: ClaimRequest):
         if live_chat:
             result = store.claim_live_chat(live_chat["id"], claimer)
             if result["ok"]:
-                import threading
-                threading.Thread(
-                    target=_notify_others_claimed,
-                    args=(live_chat["id"], claimer, store),
-                    daemon=True,
-                ).start()
+                # Notify synchronously before returning
+                _notify_others_claimed(live_chat["id"], claimer, store)
         else:
             result = store.claim_handoff(session_id, claimer)
         if not result["ok"]:
