@@ -26,7 +26,7 @@
 Open your browser and go to:
 
 ```
-https://your-chatbot-url/admin/
+https://koha-chatbot-one.vercel.app/admin/
 ```
 
 You will be prompted to log in with your username and password. Contact your system administrator if you do not have credentials.
@@ -94,7 +94,7 @@ You will get an email with the subject **"📚 A patron wants to ask a librarian
 Click the link in the email, or go directly to:
 
 ```
-https://your-chatbot-url/chat/
+https://koha-chatbot-one.vercel.app/chat/
 ```
 
 Enter your name when prompted. This name will be shown to the patron when you join.
