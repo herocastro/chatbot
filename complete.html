@@ -1,0 +1,2507 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Koha Chatbot Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ===== RESET ===== */
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+
+/* ===== LOGIN PAGE ===== */
+#loginPage{
+  min-height:100vh;
+  background:#f4f7fb;
+  position:relative;
+  transition:.3s;
+  overflow:hidden;
+}
+#loginPage::before{content:'';position:absolute;width:450px;height:450px;border-radius:50%;background:rgba(37,99,235,.07);top:-140px;right:-140px}
+#loginPage::after{content:'';position:absolute;width:350px;height:350px;border-radius:50%;background:rgba(37,99,235,.07);bottom:-120px;left:-120px}
+.login-navbar{width:100%;height:70px;background:linear-gradient(to right,#0f172a,#14213d);display:flex;align-items:center;justify-content:space-between;padding:0 40px;color:#fff;position:relative;z-index:10;box-shadow:0 5px 20px rgba(0,0,0,.08)}
+.logo{display:flex;align-items:center;gap:12px;font-size:28px;font-weight:600}
+.logo i{color:#3b82f6}
+.dark-mode-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;user-select:none}
+.login-container{width:100%;height:calc(100vh - 70px);display:flex;align-items:center;justify-content:center;padding:20px;position:relative}
+.login-card{width:430px;background:#fff;border-radius:24px;padding:45px 40px;box-shadow:0 15px 45px rgba(0,0,0,.08);position:relative;z-index:2;animation:fadeUp .6s ease;transition:.3s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.icon-circle{width:95px;height:95px;border-radius:50%;background:#eef4ff;display:flex;align-items:center;justify-content:center;margin:auto auto 20px;transition:.3s}
+.icon-circle i{font-size:38px;color:#2563eb}
+.login-card h1{text-align:center;font-size:38px;color:#14213d;margin-bottom:10px;transition:.3s}
+.login-card>p{text-align:center;color:#64748b;font-size:15px;margin-bottom:35px;transition:.3s}
+.form-group{margin-bottom:22px}
+.form-group label{display:block;margin-bottom:8px;font-size:14px;font-weight:500;color:#1e293b;transition:.3s}
+.input-box{position:relative}
+.input-box input{width:100%;height:55px;border:1px solid #dbe3ef;border-radius:12px;padding:0 50px;font-size:15px;background:#fafcff;transition:.3s}
+.input-box input:focus{outline:none;border-color:#2563eb;background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.08)}
+.input-box i{position:absolute;top:50%;transform:translateY(-50%);color:#94a3b8}
+.left-icon{left:18px}
+.right-icon{right:18px;cursor:pointer}
+.options{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px;font-size:14px}
+.remember{display:flex;align-items:center;gap:8px;color:#475569;transition:.3s}
+.options a{text-decoration:none;color:#2563eb;font-weight:500}
+.btn-login{width:100%;height:55px;border:none;border-radius:14px;background:linear-gradient(to right,#2563eb,#3b82f6);color:#fff;font-size:17px;font-weight:600;cursor:pointer;transition:.3s;box-shadow:0 10px 25px rgba(37,99,235,.25)}
+.btn-login:hover{transform:translateY(-2px)}
+.login-footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:13px;line-height:1.8;transition:.3s}
+/* forgot modal */
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
+.modal-content{width:400px;background:#fff;border-radius:22px;padding:35px 30px;text-align:center;position:relative;animation:popup .3s ease;transition:.3s}
+@keyframes popup{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.close-btn{position:absolute;top:15px;right:18px;font-size:22px;color:#64748b;cursor:pointer}
+.modal-icon{width:80px;height:80px;border-radius:50%;background:#eef4ff;display:flex;align-items:center;justify-content:center;margin:auto auto 20px;transition:.3s}
+.modal-icon i{font-size:32px;color:#2563eb}
+.modal-content h2{color:#14213d;margin-bottom:12px;transition:.3s}
+.modal-content p{color:#64748b;font-size:15px;line-height:1.7;margin-bottom:25px;transition:.3s}
+.admin-email{background:#f8fafc;border:1px solid #dbe3ef;border-radius:12px;padding:14px;margin-bottom:22px;color:#2563eb;font-weight:600;transition:.3s}
+.email-btn{width:100%;height:52px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;text-decoration:none;background:linear-gradient(to right,#2563eb,#3b82f6);color:#fff;font-weight:600;transition:.3s}
+.email-btn:hover{transform:translateY(-2px)}
+/* login dark mode */
+#loginPage.dark{background:#0f172a}
+#loginPage.dark .login-card{background:#1e293b;box-shadow:0 15px 45px rgba(0,0,0,.35)}
+#loginPage.dark .login-card h1{color:#fff}
+#loginPage.dark .login-card>p{color:#cbd5e1}
+#loginPage.dark .form-group label{color:#e2e8f0}
+#loginPage.dark .input-box input{background:#0f172a;border:1px solid #334155;color:#fff}
+#loginPage.dark .input-box input::placeholder{color:#94a3b8}
+#loginPage.dark .remember{color:#cbd5e1}
+#loginPage.dark .login-footer{color:#94a3b8}
+#loginPage.dark .icon-circle{background:#0f172a}
+#loginPage.dark .modal-content{background:#1e293b}
+#loginPage.dark .modal-content h2{color:#fff}
+#loginPage.dark .modal-content p{color:#cbd5e1}
+#loginPage.dark .modal-icon{background:#0f172a}
+#loginPage.dark .admin-email{background:#0f172a;border:1px solid #334155}
+#loginPage.dark .login-navbar{background:linear-gradient(to right,#020617,#0f172a)}
+@media(max-width:768px){
+  html, body{height:100%}
+  body.login-active{overflow:hidden}
+  .login-navbar{height:52px;padding:0 20px}
+  .logo{font-size:19px;gap:8px}
+  #loginPage{overflow:hidden;height:100vh}
+  .login-container{height:calc(100vh - 52px);padding:12px 16px;align-items:center;overflow:hidden}
+  .login-card{width:100%;padding:20px 18px}
+  .icon-circle{width:52px;height:52px;margin-bottom:10px}
+  .icon-circle i{font-size:22px}
+  .login-card h1{font-size:22px;margin-bottom:6px}
+  .login-card>p{font-size:12px;margin-bottom:16px}
+  .form-group{margin-bottom:12px}
+  .form-group label{margin-bottom:5px;font-size:13px}
+  .input-box input{height:44px;font-size:13px}
+  .options{margin-bottom:14px;font-size:13px}
+  .btn-login{height:44px;font-size:14px}
+  .login-footer{font-size:11px;margin-top:14px;line-height:1.5}
+  .modal-content{width:92%;padding:24px 18px}
+}
+@media(max-width:400px){
+  .login-navbar{padding:0 14px}
+  .logo{font-size:16px}
+  .dark-mode-toggle span{display:none}
+  .login-card{padding:16px 14px}
+  .login-card h1{font-size:19px}
+  .icon-circle{width:44px;height:44px}
+  .icon-circle i{font-size:18px}
+  .form-group{margin-bottom:10px}
+  .input-box input{height:40px}
+  .btn-login{height:40px;font-size:13px}
+  .login-footer{font-size:10px;margin-top:10px}
+}
+
+/* ===== ADMIN PAGE ===== */
+#adminPage{display:none}
+#adminPage.active{display:block}
+body.admin-active{background:#eef2ff;color:#1e293b}
+.top{height:70px;background:linear-gradient(to right,#0f172a,#14213d);color:#fff;padding:0 40px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 5px 20px rgba(0,0,0,.08)}
+.top-logo{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:600}
+.top-logo i{color:#3b82f6}
+.top-right{display:flex;align-items:center;gap:14px;font-size:15px}
+.top button{background:#ef4444;color:#fff;border:0;padding:10px 18px;border-radius:12px;cursor:pointer;transition:.3s;font-size:14px;font-weight:500}
+.top button:hover{opacity:.9}
+.main{display:flex}
+.sidebar{width:260px;background:#fff;height:calc(100vh - 70px);padding:20px;border-right:1px solid #eee;box-shadow:5px 0 15px rgba(0,0,0,.04)}
+.menu a{display:flex;padding:14px 16px;margin:8px 0;border-radius:14px;text-decoration:none;color:#64748b;gap:12px;transition:.3s;font-weight:500;cursor:pointer}
+.menu a.active,.menu a:hover{background:#2563eb;color:#fff;transform:translateX(5px)}
+.content{flex:1;padding:25px;height:calc(100vh - 70px);overflow:auto}
+.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:20px}
+.card,.box,.panel{background:#fff;padding:22px;border-radius:24px;box-shadow:0 10px 25px rgba(0,0,0,.06)}
+.card{transition:.3s}
+.card:hover{transform:translateY(-8px)}
+.card h1{font-size:34px;color:#2563eb}
+.card p{color:#64748b;margin-top:6px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-top:20px}
+table{width:100%;border-collapse:collapse;margin-top:10px}td,th{padding:14px;border-bottom:1px solid #edf2f7;text-align:left}th{background:#f8fafc}
+#adminPage input,#adminPage textarea,#adminPage select{width:100%;padding:12px;border:1px solid #dbe3ef;border-radius:12px;margin:10px 0;background:#f8fafc;outline:none}
+.box{width:100%;overflow:hidden}
+#adminPage button{background:#2563eb;color:#fff;border:0;padding:11px 18px;border-radius:12px;cursor:pointer;transition:.3s}
+#adminPage button:hover{opacity:.9}
+.faq{border:1px solid #e5e7eb;border-radius:16px;padding:0;margin:0;background:#fff;overflow:hidden;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.faq:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-2px)}
+.faq-accent{width:4px;flex-shrink:0}
+.faq-body{padding:16px 18px;flex:1;min-width:0}
+.faq-title{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.faq-field{margin-bottom:10px}
+.faq-field-label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.faq-field-value{font-size:13px;color:#475569;line-height:1.6}
+.faq-answer-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.faq-answer-text.expanded{display:block;-webkit-line-clamp:unset}
+.faq-toggle{font-size:11px;color:#2563eb;cursor:pointer;font-weight:500;margin-top:3px;display:inline-block}
+.faq-footer{padding:10px 18px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;background:#fafcff}
+#faqGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:900px){#faqGrid{grid-template-columns:1fr}}
+.chat{display:grid;grid-template-columns:300px 1fr;gap:20px}.panel{height:500px}
+@media(max-width:1200px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .grid,.chat{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  html,body{width:100%;overflow-x:hidden;margin:0;padding:0}
+  .main{display:flex;flex-direction:column;width:100%}
+
+  /* top bar */
+  .top{position:sticky;top:0;z-index:100;padding:0 16px;height:56px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .top-logo{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+  .top-logo i{font-size:16px}
+  .top-right{gap:8px}
+  /* hide dark mode text, separator, username on mobile */
+  #adminDarkText{display:none}
+  .top-sep{display:none}
+  .top-username{display:none}
+  .top-right>span[style*='color:#94a3b8']{display:none}
+  .top-right>span:not([id]){display:none}
+  /* icon-only logout button */
+  #logoutBtn{padding:8px 10px;font-size:13px;border-radius:10px}
+  #logoutBtn span{display:none}
+
+  /* sidebar → horizontal scroll tab bar */
+  .sidebar{width:100vw;min-width:100vw;max-width:100vw;margin:0;padding:0;height:auto;min-height:auto;position:sticky;top:56px;left:0;right:0;z-index:99;background:#fff;border:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .menu{width:100%;display:flex;overflow-x:auto;overflow-y:hidden;gap:6px;padding:8px 12px;box-sizing:border-box;white-space:nowrap;margin:0;height:auto;border-radius:0;scrollbar-width:none;-ms-overflow-style:none}
+  .menu::-webkit-scrollbar{display:none}
+  .menu a{flex:0 0 auto;min-width:max-content;padding:8px 14px;font-size:12px;border-radius:12px;white-space:nowrap;margin:0;gap:6px}
+  /* hide dividers in horizontal scroll mode */
+  .menu>div[style*='border-top']{display:none}
+
+  .content{width:100%;padding:10px 12px;margin-top:0;box-sizing:border-box;height:auto}
+  .cards,.grid,.chat{grid-template-columns:1fr}
+  .table-wrap,table{display:block;overflow-x:auto;white-space:nowrap}
+  #faqModal>div,#aiSaveModal>div{width:95%!important;max-width:95%!important}
+  .hours-row{flex-direction:column;align-items:flex-start!important}
+  #management>div:first-child{grid-template-columns:1fr}
+}
+@media(max-width:500px){
+  .menu a{min-width:110px;font-size:12px}
+  #adminPage input,#adminPage textarea,#adminPage select,#adminPage button{font-size:13px}
+  .card h1{font-size:28px}
+  .faq img{width:100%!important;height:auto}
+}
+
+/* ===== PAGE BANNER ===== */
+.page-banner{border-radius:20px;padding:24px 28px;margin-bottom:20px;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.pb-title{margin:0 0 6px;font-size:20px;font-weight:700}
+.pb-desc{margin:0;opacity:.85;font-size:13px;max-width:520px;line-height:1.6}
+.pb-stat{background:rgba(255,255,255,.18);border-radius:14px;padding:10px 20px;text-align:center;min-width:80px;flex-shrink:0}
+.pb-stat-num{font-size:24px;font-weight:700;line-height:1}
+.pb-stat-label{font-size:11px;opacity:.85;margin-top:3px}
+@media(max-width:600px){
+  .page-banner{padding:18px 20px}
+  .pb-title{font-size:17px}
+  .pb-desc{font-size:12px}
+  .pb-stat{padding:8px 14px}
+  .pb-stat-num{font-size:20px}
+}
+
+/* ===== LIVE CHAT ===== */
+.live-queue-item{border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.2s;background:#fff}
+.live-queue-item:hover{border-color:#2563eb;background:#eff6ff}
+.live-queue-item.active{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.live-queue-item .lq-name{font-weight:600;font-size:13px;color:#1e293b;margin-bottom:4px}
+.live-queue-item .lq-meta{font-size:11px;color:#64748b}
+.live-queue-item .lq-status{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;margin-top:4px}
+.lq-waiting{background:#fef3c7;color:#92400e}
+.lq-active{background:#dcfce7;color:#166534}
+.live-msg{display:flex;flex-direction:column;max-width:75%}
+.live-msg.patron{align-self:flex-start}
+.live-msg.staff{align-self:flex-end}
+.live-msg.bot{align-self:flex-start}
+.live-msg-label{font-size:10px;color:#94a3b8;margin-bottom:3px}
+.live-msg.staff .live-msg-label{text-align:right}
+.live-msg-bubble{padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.6}
+.live-msg.patron .live-msg-bubble{background:#f1f5f9;color:#1e293b;border-radius:4px 16px 16px 16px}
+.live-msg.staff .live-msg-bubble{background:#2563eb;color:#fff;border-radius:16px 4px 16px 16px}
+.live-msg.bot .live-msg-bubble{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:4px 16px 16px 16px}
+#adminPage.dark .live-queue-item{background:#1e293b;border-color:#334155}
+#adminPage.dark .live-queue-item:hover,#adminPage.dark .live-queue-item.active{background:#1e3a5f;border-color:#2563eb}
+#adminPage.dark .live-queue-item .lq-name{color:#f1f5f9}
+#adminPage.dark .live-msg.patron .live-msg-bubble{background:#334155;color:#e2e8f0}
+@media(max-width:768px){#live>div:last-child{grid-template-columns:1fr;height:auto}}
+/* live chat mobile */
+@media(max-width:768px){
+  #liveChatGrid{
+    grid-template-columns:1fr!important;
+    height:auto!important;
+    min-height:0!important;
+    gap:12px;
+  }
+  /* queue panel: fixed compact height */
+  #liveChatGrid>.box:first-child{
+    height:200px;
+    min-height:0;
+  }
+  /* chat panel: fill remaining viewport */
+  #liveChatGrid>.box:last-child{
+    height:calc(100svh - 520px);
+    min-height:280px;
+  }
+}
+.perf-rating-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:22px 24px;transition:.2s;position:relative;overflow:hidden}
+.perf-rating-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:#2563eb;border-radius:4px 0 0 4px}
+.perf-rating-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.08);transform:translateY(-2px)}
+.perf-rating-card .prc-name{font-weight:600;color:#1e293b;font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.perf-rating-card .prc-score-row{display:flex;align-items:flex-end;gap:8px;margin-bottom:14px}
+.perf-rating-card .prc-score{font-size:36px;font-weight:700;line-height:1}
+.perf-rating-card .prc-score-max{font-size:14px;color:#94a3b8;margin-bottom:4px}
+.perf-rating-card .prc-bar-wrap{margin-bottom:14px}
+.perf-rating-card .prc-bar-label{display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-bottom:4px}
+.perf-rating-card .prc-bar-track{height:8px;background:#f1f5f9;border-radius:20px;overflow:hidden}
+.perf-rating-card .prc-bar-fill{height:100%;border-radius:20px;transition:width .4s ease}
+.perf-rating-card .prc-stats{display:flex;gap:8px;flex-wrap:wrap}
+.perf-stat-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.perf-stat-sat{background:#dcfce7;color:#166534}
+.perf-stat-unsat{background:#fee2e2;color:#991b1b}
+.perf-stat-none{background:#f1f5f9;color:#64748b}
+.rating-badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.rating-pos{background:#dcfce7;color:#166534}
+.rating-neg{background:#fee2e2;color:#991b1b}
+.rating-none{background:#f1f5f9;color:#64748b}
+.perf-summary-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px 22px;display:flex;align-items:center;gap:16px}
+.perf-summary-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.perf-summary-num{font-size:28px;font-weight:700;color:#1e293b;line-height:1}
+.perf-summary-label{font-size:12px;color:#64748b;margin-top:3px}
+#adminPage.dark .perf-rating-card{background:#1e293b;border-color:#334155}
+#adminPage.dark .perf-rating-card .prc-name{color:#f1f5f9}
+#adminPage.dark .perf-rating-card .prc-bar-track{background:#334155}
+#adminPage.dark .perf-rating-card .prc-stats{color:#94a3b8}
+#adminPage.dark .perf-summary-card{background:#1e293b;border-color:#334155}
+#adminPage.dark .perf-summary-num{color:#f1f5f9}
+#adminPage.dark #perfPrevBtn,#adminPage.dark #perfNextBtn{background:#1e293b;color:#94a3b8;border-color:#334155}
+@media(max-width:900px){#perfRatingCards{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:600px){
+  #perfRatingCards,#perfSummaryCards{grid-template-columns:1fr!important}
+  #ai>div[style*='grid-template-columns:1fr 1fr'],
+  #ai>.box>div[style*='grid-template-columns:1fr 1fr']{grid-template-columns:1fr!important}
+}
+/* management tab dark */
+#adminPage.dark .mgmt-flagged-card{background:#1e293b;border-color:#334155}
+#adminPage.dark .mgmt-flagged-card h4{color:#f1f5f9}
+#adminPage.dark #flagPrevBtn,#adminPage.dark #flagNextBtn{background:#1e293b;color:#94a3b8;border-color:#334155}
+/* management grid responsive */
+@media(max-width:768px){#management>div:first-child{grid-template-columns:1fr}}
+/* staff grid */
+#staffGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+#adminPage.dark #staffGrid>div{background:#1e293b;border-color:#334155}
+#adminPage.dark #staffGrid .prc-name{color:#f1f5f9}
+/* hours rows */
+#adminPage.dark .hours-row{background:#1e293b!important;border-color:#334155!important}
+#adminPage.dark .hours-row label{color:#cbd5e1}
+/* ai settings */
+#adminPage.dark #ai .box{background:#1e293b}
+#adminPage.dark #ai h3{color:#f1f5f9}
+#adminPage.dark #ai label{color:#94a3b8}
+@media(max-width:900px){#staffGrid{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:600px){#staffGrid{grid-template-columns:1fr!important}}
+#confirmModal,#staffModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;justify-content:center;align-items:center}
+#confirmModal>div,#staffModal>div{background:#fff;border-radius:24px;padding:28px;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+/* toast */
+#adminToast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;color:#fff;padding:12px 24px;border-radius:14px;font-size:14px;opacity:0;transition:.3s;z-index:1200;pointer-events:none;white-space:nowrap}
+#adminToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#adminToast.error{background:#ef4444}
+/* dark mode for shared modals */
+#adminPage.dark #confirmModal>div,#adminPage.dark #staffModal>div{background:#1e293b}
+#adminPage.dark #confirmModal h2,#adminPage.dark #staffModal h2{color:#f1f5f9}
+#adminPage.dark #confirmModal p,#adminPage.dark #staffModal p{color:#cbd5e1}
+#adminPage.dark #staffModal label{color:#cbd5e1}
+#adminPage.dark body,
+#adminPage.dark{background:#0f172a;color:#e2e8f0}
+#adminPage.dark .top{background:linear-gradient(to right,#020617,#0f172a)}
+#adminPage.dark .sidebar{background:#1e293b;border-color:#334155}
+#adminPage.dark .menu a{color:#94a3b8}
+#adminPage.dark .menu a.active,#adminPage.dark .menu a:hover{background:#2563eb;color:#fff}
+/* mobile sidebar dark */
+@media(max-width:768px){
+  #adminPage.dark .sidebar{background:#1e293b;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  #adminPage.dark .menu{background:#1e293b}
+}
+#adminPage.dark .content{background:#0f172a}
+#adminPage.dark .card,#adminPage.dark .box,#adminPage.dark .panel{background:#1e293b;box-shadow:0 10px 25px rgba(0,0,0,.3)}
+#adminPage.dark .card p{color:#94a3b8}
+#adminPage.dark th{background:#0f172a;color:#e2e8f0}
+#adminPage.dark td{color:#cbd5e1;border-color:#334155}
+#adminPage.dark input,#adminPage.dark textarea,#adminPage.dark select{background:#0f172a;border-color:#334155;color:#e2e8f0}
+#adminPage.dark input::placeholder,#adminPage.dark textarea::placeholder{color:#64748b}
+#adminPage.dark .faq{background:#1e293b;border-color:#334155}
+#adminPage.dark .faq-title{color:#f1f5f9}
+#adminPage.dark .faq-field-value{color:#94a3b8}
+#adminPage.dark .faq-footer{background:#0f172a;border-color:#334155}
+#adminPage.dark h2,#adminPage.dark h3{color:#f1f5f9}
+#adminPage.dark p{color:#94a3b8}
+#adminPage.dark label{color:#cbd5e1}
+#adminPage.dark .admin-dark-toggle{color:#fff}
+body.admin-dark{background:#0f172a}
+/* session modal dark */
+#adminPage.dark #sessionModal>div,
+#adminPage.dark #lchModal>div{background:#1e293b}
+#adminPage.dark #sessionModal h2,
+#adminPage.dark #lchModal h2{color:#f1f5f9}
+#adminPage.dark #sessionChatLog>div>div[style*='#f1f5f9'],
+#adminPage.dark #lchModalLog>div>div[style*='#f1f5f9']{background:#334155!important;color:#e2e8f0!important}
+/* faq modal dark */
+#adminPage.dark #faqModal>div,
+#adminPage.dark #editFAQModal>div,
+#adminPage.dark #deleteFAQModal>div{background:#1e293b}
+#adminPage.dark #faqModal h2,
+#adminPage.dark #editFAQModal h2,
+#adminPage.dark #deleteFAQModal h2{color:#f1f5f9}
+#adminPage.dark #faqModal label,
+#adminPage.dark #editFAQModal label{color:#cbd5e1}
+#adminPage.dark #deleteFAQName{background:#0f172a;border-color:#334155;color:#f1f5f9}
+</style>
+</head>
+<body class="login-active">
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="loginPage">
+
+  <div class="login-navbar">
+    <div class="logo">
+      <i class="fa-solid fa-comments"></i>
+      <span>Koha Chatbot Admin</span>
+    </div>
+    <div class="dark-mode-toggle" id="darkModeToggle">
+      <i class="fa-solid fa-moon" id="darkIcon"></i>
+      <span id="darkText">Dark Mode</span>
+    </div>
+  </div>
+
+  <div class="login-container">
+    <div class="login-card">
+      <div class="icon-circle">
+        <i class="fa-solid fa-comments"></i>
+      </div>
+      <h1>Welcome Back!</h1>
+      <p>Sign in to access the Koha Chatbot Admin Dashboard</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Username</label>
+          <div class="input-box">
+            <i class="fa-regular fa-user left-icon"></i>
+            <input type="text" id="loginUser" placeholder="Enter your username">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-box">
+            <i class="fa-solid fa-lock left-icon"></i>
+            <input type="password" id="loginPass" placeholder="Enter your password">
+            <i class="fa-regular fa-eye right-icon" id="togglePassword"></i>
+          </div>
+        </div>
+        <div class="options">
+          <label class="remember">
+            <input type="checkbox"> Remember me
+          </label>
+          <a href="#" id="forgotBtn">Forgot password?</a>
+        </div>
+        <button class="btn-login" type="submit">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>&nbsp; Sign In
+        </button>
+      </form>
+
+      <div class="login-footer">
+        © 2026 Koha Chatbot Admin <br>
+        Secure • Reliable • Efficient <br><br>
+        Developed by: <strong>RLSB, AWC, MAOD</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div class="modal" id="forgotModal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeModal">&times;</span>
+      <div class="modal-icon">
+        <i class="fa-solid fa-envelope"></i>
+      </div>
+      <h2>Forgot Password?</h2>
+      <p>Please contact the system administrator to reset your account password.</p>
+      <div class="admin-email">
+        <i class="fa-solid fa-at"></i> libchatbot@gmail.com
+      </div>
+      <a href="mailto:libchatbot@gmail.com" class="email-btn">
+        <i class="fa-solid fa-paper-plane"></i> Send Email
+      </a>
+    </div>
+  </div>
+
+</div><!-- end #loginPage -->
+
+<!-- ===== ADMIN PAGE ===== -->
+<div id="adminPage">
+<div class='top'>
+  <div class='top-logo'><i class='fa-solid fa-comments'></i><span>Koha Chatbot Admin</span></div>
+  <div class='top-right'>
+    <div class='admin-dark-toggle' id='adminDarkToggle' style='display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;user-select:none'>
+      <i class='fa-solid fa-moon' id='adminDarkIcon'></i>
+      <span id='adminDarkText'>Dark Mode</span>
+    </div>
+    <span class='top-sep' style='color:#94a3b8'>|</span>
+    <span id='adminUsername' class='top-username'>admin</span>
+    <button id="logoutBtn"><i class='fa fa-right-from-bracket'></i> <span>Logout</span></button>
+  </div>
+</div>
+<div class='main'>
+<div class='sidebar'>
+<div class='menu'>
+<a class='active' data-page='dashboard'><i class='fa fa-chart-line'></i>Dashboard</a>
+<a data-page='sessions'><i class='fa fa-layer-group'></i>Sessions</a>
+<a data-page='live'><i class='fa fa-comments'></i>Live Chat</a>
+<div style='margin:8px 16px;border-top:1px solid #e5e7eb;opacity:.5'></div>
+<a data-page='library'><i class='fa fa-book'></i>Library Info</a>
+<a data-page='ai'><i class='fa fa-robot'></i>AI Settings</a>
+<a data-page='hours'><i class='fa fa-clock'></i>Library Hours</a>
+<div style='margin:8px 16px;border-top:1px solid #e5e7eb;opacity:.5'></div>
+<a data-page='performance'><i class='fa fa-chart-bar'></i>Staff Performance</a>
+<a data-page='staff'><i class='fa fa-envelope'></i>Notify Staff</a>
+<div style='margin:8px 16px;border-top:1px solid #e5e7eb;opacity:.5'></div>
+<a data-page='management'><i class='fa fa-screwdriver-wrench'></i>Management</a>
+</div></div>
+<div class='content'>
+<div class='page active' id='dashboard'>
+<div class='page-banner' style='background:linear-gradient(135deg,#2563eb,#4f46e5)'>
+  <div><h2 class='pb-title'>Welcome back, Admin 👋</h2><p class='pb-desc'>Monitor chatbot activity, patron interactions, and system health at a glance.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num'>87</div><div class='pb-stat-label'>Sessions Today</div></div>
+</div>
+<div class='cards' style='margin-top:0'>
+<div class='card' style='border-top:3px solid #2563eb'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start'>
+    <div><h1>87</h1><p>Total Sessions</p></div>
+    <div style='width:42px;height:42px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center'><i class='fa fa-layer-group' style='color:#2563eb'></i></div>
+  </div>
+</div>
+<div class='card' style='border-top:3px solid #7c3aed'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start'>
+    <div><h1>143</h1><p>Total Messages</p></div>
+    <div style='width:42px;height:42px;border-radius:12px;background:#f5f3ff;display:flex;align-items:center;justify-content:center'><i class='fa fa-message' style='color:#7c3aed'></i></div>
+  </div>
+</div>
+<div class='card' style='border-top:3px solid #16a34a'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start'>
+    <div><h1>12</h1><p>Active Sessions</p></div>
+    <div style='width:42px;height:42px;border-radius:12px;background:#dcfce7;display:flex;align-items:center;justify-content:center'><i class='fa fa-circle-dot' style='color:#16a34a'></i></div>
+  </div>
+</div>
+<div class='card' style='border-top:3px solid #f59e0b'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start'>
+    <div><h1>4.0★</h1><p>Patron Rating</p></div>
+    <div style='width:42px;height:42px;border-radius:12px;background:#fef3c7;display:flex;align-items:center;justify-content:center'><i class='fa fa-star' style='color:#f59e0b'></i></div>
+  </div>
+</div>
+</div>
+<div class='grid'><div class='box'><h3><i class='fa fa-chart-area'></i> Chat Analytics</h3><canvas id='analyticsChart' height='120'></canvas></div><div class='box'><h3>Patron Ratings</h3><div style='margin-top:20px;display:flex;flex-direction:column;gap:14px'><div><b>★★★★</b><div style='height:10px;background:#eee;border-radius:20px'><div style='width:80%;height:100%;background:#2563eb;border-radius:20px'></div></div></div><div><b>★★★</b><div style='height:10px;background:#eee;border-radius:20px'><div style='width:55%;height:100%;background:#4f46e5;border-radius:20px'></div></div></div><div><b>★★</b><div style='height:10px;background:#eee;border-radius:20px'><div style='width:30%;height:100%;background:#7c3aed;border-radius:20px'></div></div></div></div></div></div><div class='box' style='margin-top:20px'><h3 style='margin-bottom:14px'><i class='fa fa-clock-rotate-left' style='color:#2563eb;margin-right:8px'></i>Recent Sessions</h3><table><tr><th>ID</th><th>Messages</th><th>Status</th></tr><tr><td><code>6dd6d</code></td><td>3</td><td><span style='background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600'>Expired</span></td></tr><tr><td><code>b47e7</code></td><td>5</td><td><span style='background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600'>Active</span></td></tr></table></div></div>
+<div class='page' id='sessions'>
+<div class='page-banner' style='background:linear-gradient(135deg,#0369a1,#0284c7)'>
+  <div><h2 class='pb-title'><i class='fa fa-layer-group'></i> Sessions</h2><p class='pb-desc'>View all chatbot sessions, browse transcripts, and flag conversations for follow-up.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num'>3</div><div class='pb-stat-label'>Total Sessions</div></div>
+</div>
+  <div class='box'>
+    <p style='color:#64748b;margin-bottom:16px;font-size:13px'>Click <b>View</b> on any session to see the full chat transcript. Use the 🚩 flag button to mark sessions for follow-up.</p>
+    <div style='overflow-x:auto'>
+    <table id='sessionsTable'>
+      <tr><th>Session ID</th><th>Patron</th><th>Messages</th><th>Started</th><th>Duration</th><th>Status</th><th>Action</th></tr>
+      <tr>
+        <td><code>6dd6d</code></td><td>Anonymous</td><td>3</td><td>5/13/26 9:02 AM</td><td>2 min</td>
+        <td><span style='background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600'>Expired</span></td>
+        <td style='display:flex;gap:6px'>
+          <button onclick="viewSession('6dd6d')"><i class='fa fa-eye'></i> View</button>
+          <button data-flag-id='6dd6d' title='Flag for follow-up' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:9px 12px'><i class='fa fa-flag' style='color:#cbd5e1'></i></button>
+        </td>
+      </tr>
+      <tr>
+        <td><code>b47e7</code></td><td>Anonymous</td><td>8</td><td>5/14/26 10:15 AM</td><td>7 min</td>
+        <td><span style='background:#dcfce7;color:#166534;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600'>Active</span></td>
+        <td style='display:flex;gap:6px'>
+          <button onclick="viewSession('b47e7')"><i class='fa fa-eye'></i> View</button>
+          <button data-flag-id='b47e7' title='Flag for follow-up' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:9px 12px'><i class='fa fa-flag' style='color:#cbd5e1'></i></button>
+        </td>
+      </tr>
+      <tr>
+        <td><code>a91c3</code></td><td>Anonymous</td><td>5</td><td>5/14/26 8:44 AM</td><td>4 min</td>
+        <td><span style='background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600'>Expired</span></td>
+        <td style='display:flex;gap:6px'>
+          <button onclick="viewSession('a91c3')"><i class='fa fa-eye'></i> View</button>
+          <button data-flag-id='a91c3' title='Flag for follow-up' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:9px 12px'><i class='fa fa-flag' style='color:#cbd5e1'></i></button>
+        </td>
+      </tr>
+    </table>
+    </div>
+  </div>
+
+</div><!-- end #sessions -->
+<div class='page' id='library'>
+<div class='page-banner' style='background:linear-gradient(135deg,#047857,#059669)'>
+  <div><h2 class='pb-title'><i class='fa fa-book'></i> Library Info</h2><p class='pb-desc'>Manage the chatbot's FAQ buttons and answers shown to patrons in the chat widget.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num' id='faqCountBadge'>—</div><div class='pb-stat-label'>FAQs</div></div>
+</div>
+<div class='box'>
+<div style='display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap'>
+  <div style='flex:1;min-width:200px'>
+    <div style='position:relative'>
+      <i class='fa fa-magnifying-glass' style='position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px'></i>
+      <input id='faqSearch' placeholder='Search FAQs...' onkeyup='renderFAQ()' style='margin:0;padding-left:38px'>
+    </div>
+  </div>
+  <button type='button' onclick='openFAQModal()' style='flex-shrink:0'><i class='fa fa-plus'></i> Add FAQ</button>
+</div>
+<div id='faqGrid'></div>
+</div>
+</div>
+<div class='page' id='ai'>
+<div class='page-banner' style='background:linear-gradient(135deg,#6d28d9,#7c3aed)'>
+  <div><h2 class='pb-title'><i class='fa fa-robot'></i> AI Settings</h2><p class='pb-desc'>Configure the chatbot's name, greeting, personality, response mode, and operational scope.</p></div>
+  <div style='display:flex;gap:10px'>
+    <div class='pb-stat'><div class='pb-stat-num'>LLORA</div><div class='pb-stat-label'>Assistant</div></div>
+  </div>
+</div>
+
+<!-- Edit/Save toolbar -->
+<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px'>
+  <div style='display:flex;align-items:center;gap:8px'>
+    <i class='fa fa-lock' id='aiLockIcon' style='color:#94a3b8;font-size:13px'></i>
+    <span id='aiLockLabel' style='font-size:13px;color:#64748b'>Settings are locked. Click Edit to make changes.</span>
+  </div>
+  <div style='display:flex;gap:8px'>
+    <button onclick='enableAIEdit()' style='font-size:13px;padding:9px 18px;border-radius:12px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'><i class='fa fa-pen'></i> Edit</button>
+    <button id='aiSaveBtn' onclick='openAISaveModal()' disabled style='opacity:.5;cursor:not-allowed;font-size:13px;padding:9px 18px;border-radius:12px'><i class='fa fa-save'></i> Save Changes</button>
+  </div>
+</div>
+
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px'>
+
+  <!-- Basic Settings -->
+  <div class='box'>
+    <div style='display:flex;align-items:center;gap:10px;margin-bottom:20px'>
+      <div style='width:38px;height:38px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0'>
+        <i class='fa fa-sliders' style='color:#7c3aed'></i>
+      </div>
+      <div><h3 style='margin:0;font-size:15px'>Basic Settings</h3><p style='color:#64748b;font-size:12px;margin:2px 0 0'>Core identity and behavior</p></div>
+    </div>
+    <div style='display:flex;flex-direction:column;gap:16px'>
+      <div>
+        <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>Assistant Name</label>
+        <input class='aiField' disabled value='LLORA' style='margin:0'>
+      </div>
+      <div>
+        <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>AI Status</label>
+        <select class='aiField' disabled style='margin:0'>
+          <option>Enabled</option>
+          <option>Disabled</option>
+        </select>
+      </div>
+      <div>
+        <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>Response Mode</label>
+        <select class='aiField' disabled style='margin:0'>
+          <option>Friendly</option>
+          <option>Professional</option>
+          <option>Formal</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Greeting -->
+  <div class='box'>
+    <div style='display:flex;align-items:center;gap:10px;margin-bottom:20px'>
+      <div style='width:38px;height:38px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0'>
+        <i class='fa fa-comment-dots' style='color:#7c3aed'></i>
+      </div>
+      <div><h3 style='margin:0;font-size:15px'>Greeting Message</h3><p style='color:#64748b;font-size:12px;margin:2px 0 0'>First message shown to patrons</p></div>
+    </div>
+    <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>Default Greeting</label>
+    <textarea class='aiField' disabled rows='4' style='margin:0 0 14px;resize:none'>Hello! I am LLORA, your virtual library assistant. How can I help you today?</textarea>
+    <!-- Preview -->
+    <div style='background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:14px'>
+      <div style='font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px'>Preview</div>
+      <div style='display:flex;align-items:flex-start;gap:10px'>
+        <div style='width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6d28d9,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0'>
+          <i class='fa fa-robot' style='color:#fff;font-size:13px'></i>
+        </div>
+        <div style='background:#fff;border:1px solid #e5e7eb;border-radius:4px 14px 14px 14px;padding:10px 14px;font-size:13px;color:#1e293b;line-height:1.5;flex:1'>
+          Hello! I am LLORA, your virtual library assistant. How can I help you today?
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Personality & Behavior -->
+<div class='box'>
+  <div style='display:flex;align-items:center;gap:10px;margin-bottom:20px'>
+    <div style='width:38px;height:38px;border-radius:10px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0'>
+      <i class='fa fa-brain' style='color:#7c3aed'></i>
+    </div>
+    <div><h3 style='margin:0;font-size:15px'>Personality & Behavior</h3><p style='color:#64748b;font-size:12px;margin:2px 0 0'>How the chatbot thinks and responds</p></div>
+  </div>
+  <div style='display:grid;grid-template-columns:1fr 1fr;gap:20px'>
+    <div>
+      <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>Personality & Tone</label>
+      <p style='font-size:12px;color:#64748b;margin-bottom:8px'>How the assistant communicates with patrons.</p>
+      <textarea rows='5' style='margin:0;resize:vertical'>You speak warmly and professionally while assisting patrons with library inquiries.</textarea>
+    </div>
+    <div>
+      <label style='display:block;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>Limitations & Scope</label>
+      <p style='font-size:12px;color:#64748b;margin-bottom:8px'>What topics the assistant should and shouldn't handle.</p>
+      <textarea rows='5' style='margin:0;resize:vertical'>Only answer library-related questions. Redirect patrons to Ask a Librarian for concerns outside your scope.</textarea>
+    </div>
+  </div>
+</div>
+</div><!-- end #ai -->
+
+<div class='page' id='hours'>
+<div class='page-banner' style='background:linear-gradient(135deg,#b45309,#d97706)'>
+  <div><h2 class='pb-title'><i class='fa fa-clock'></i> Library Hours</h2><p class='pb-desc'>Set the operating schedule for each day of the week. The Librarian button in the chat widget is automatically disabled outside these hours and 30 minutes before closing.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num'>7</div><div class='pb-stat-label'>Days</div></div>
+</div>
+<div class='box'>
+<div style='display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px'>
+<span style='color:#64748b;font-size:13px'>Edit and save each day individually</span>
+</div>
+<div id='hoursContainer'></div>
+</div>
+</div>
+<div class='page' id='live'>
+<div class='page-banner' style='background:linear-gradient(135deg,#2563eb,#4f46e5)'>
+  <div><h2 class='pb-title'><i class='fa fa-comments'></i> Live Chat</h2><p class='pb-desc'>Patrons can request a live librarian from the chatbot. Monitor the queue, join sessions, and reply in real time.</p></div>
+  <div style='display:flex;gap:10px'>
+    <div class='pb-stat'><div class='pb-stat-num' id='liveQueueCount'>2</div><div class='pb-stat-label'>In Queue</div></div>
+    <div class='pb-stat'><div class='pb-stat-num' id='liveActiveCount'>1</div><div class='pb-stat-label'>Active</div></div>
+  </div>
+</div>
+
+<div id='liveChatGrid' style='display:grid;grid-template-columns:300px 1fr;gap:16px;height:calc(100vh - 280px);min-height:420px'>
+
+  <!-- Queue Panel -->
+  <div class='box' style='padding:0;display:flex;flex-direction:column;overflow:hidden'>
+    <div style='padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center'>
+      <h3 style='margin:0;font-size:15px'>Queue</h3>
+      <span style='background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px' id='liveBadge'>2 waiting</span>
+    </div>
+    <div style='flex:1;overflow-y:auto;padding:10px' id='liveQueueList'></div>
+  </div>
+
+  <!-- Chat Panel -->
+  <div class='box' style='padding:0;display:flex;flex-direction:column;overflow:hidden'>
+    <div style='padding:14px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center' id='liveChatHeader'>
+      <div>
+        <div style='font-weight:600;font-size:14px' id='liveChatTitle'>Select a session from the queue</div>
+        <div style='font-size:12px;color:#64748b;margin-top:2px' id='liveChatMeta'>No active session</div>
+      </div>
+      <div style='display:flex;gap:8px' id='liveChatActions' style='display:none'></div>
+    </div>
+    <div style='flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px' id='liveChatMessages'>
+      <div style='text-align:center;margin:auto;color:#94a3b8'>
+        <i class='fa fa-comments' style='font-size:40px;color:#e2e8f0;display:block;margin-bottom:12px'></i>
+        <p style='font-weight:500;color:#64748b'>No session selected</p>
+        <p style='font-size:13px'>Pick a patron from the queue to start monitoring.</p>
+      </div>
+    </div>
+    <div id='liveChatInputArea' style='display:none;padding:12px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;align-items:flex-end'>
+      <textarea id='liveChatInput' rows='2' placeholder='Type a reply...' style='flex:1;margin:0;resize:none;border-radius:12px;font-size:13px;padding:10px 14px'></textarea>
+      <button onclick='sendLiveMessage()' style='padding:10px 16px;border-radius:12px;flex-shrink:0'><i class='fa fa-paper-plane'></i></button>
+    </div>
+  </div>
+
+</div>
+</div>
+<div class='page' id='performance'>
+<div class='page-banner' style='background:linear-gradient(135deg,#0f766e,#0d9488)'>
+  <div><h2 class='pb-title'><i class='fa fa-chart-bar'></i> Staff Performance</h2><p class='pb-desc'>Review librarian ratings from live chat sessions, satisfaction scores, and full chat history.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num'>3</div><div class='pb-stat-label'>Staff Members</div></div>
+</div>
+<div class='box' style='margin-bottom:20px'>
+
+  <!-- Controls row -->
+  <div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px'>
+    <h3 style='margin:0;font-size:16px'>Overview</h3>
+    <div style='display:flex;gap:8px;flex-wrap:wrap'>
+      <select id='perfDays' onchange='renderPerformance()' style='margin:0;width:auto;padding:9px 14px'>
+        <option value='7'>Last 7 days</option>
+        <option value='30' selected>Last 30 days</option>
+        <option value='90'>Last 90 days</option>
+        <option value='365'>Last year</option>
+      </select>
+      <select id='perfStaff' onchange='renderPerformance()' style='margin:0;width:auto;padding:9px 14px'>
+        <option value=''>All Staff</option>
+      </select>
+      <button onclick='renderPerformance()'><i class='fa fa-rotate-right'></i> Refresh</button>
+    </div>
+  </div>
+
+  <!-- Summary stat cards -->
+  <div id='perfSummaryCards' style='display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px'></div>
+
+  <!-- Staff rating cards -->
+  <h3 style='font-size:15px;margin-bottom:14px;color:#1e293b'>
+    <i class='fa fa-star' style='color:#f59e0b;margin-right:8px'></i>Ratings by Staff
+  </h3>
+  <div id='perfRatingCards' style='display:grid;grid-template-columns:repeat(3,1fr);gap:14px'></div>
+
+</div>
+
+<!-- Live Chat History -->
+<div class='box'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:16px'>
+    <h3 style='margin:0;font-size:16px'><i class='fa fa-comments' style='color:#2563eb;margin-right:8px'></i>Live Chat History</h3>
+    <span id='perfHistoryCount' style='font-size:12px;color:#64748b'></span>
+  </div>
+  <div style='overflow-x:auto'>
+  <table id='perfHistoryTable'>
+    <thead>
+      <tr>
+        <th>Patron</th>
+        <th>Handled By</th>
+        <th>Started</th>
+        <th>Duration</th>
+        <th>Messages</th>
+        <th>Rating</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id='perfHistoryBody'></tbody>
+  </table>
+  </div>
+  <div style='display:flex;justify-content:center;align-items:center;gap:14px;margin-top:16px'>
+    <button id='perfPrevBtn' onclick='changePerfPage(-1)' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'>← Prev</button>
+    <span id='perfPageInfo' style='font-size:13px;color:#64748b'>Page 1 of 1</span>
+    <button id='perfNextBtn' onclick='changePerfPage(1)' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'>Next →</button>
+  </div>
+</div>
+</div>
+
+<div class='page' id='management'>
+<div class='page-banner' style='background:linear-gradient(135deg,#be123c,#e11d48)'>
+  <div><h2 class='pb-title'><i class='fa fa-screwdriver-wrench'></i> Management</h2><p class='pb-desc'>Export session data, clean up old records, and manage flagged sessions that need follow-up.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num' id='flagCountBadge'>1</div><div class='pb-stat-label'>Flagged</div></div>
+</div>
+<div style='display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px'>
+
+  <!-- Export Sessions -->
+  <div class='box'>
+    <div style='display:flex;align-items:center;gap:12px;margin-bottom:16px'>
+      <div style='width:42px;height:42px;border-radius:12px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0'><i class='fa fa-download' style='color:#2563eb;font-size:16px'></i></div>
+      <div><h3 style='margin:0;font-size:15px'>Export Sessions</h3><p style='color:#64748b;font-size:12px;margin:2px 0 0'>Download as CSV for reporting</p></div>
+    </div>
+    <div style='display:flex;flex-direction:column;gap:12px'>
+      <div>
+        <label style='display:block;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px'>Status Filter</label>
+        <select id='exportStatus' style='margin:0'>
+          <option value=''>All statuses</option>
+          <option value='Active'>Active only</option>
+          <option value='Expired'>Expired only</option>
+        </select>
+      </div>
+      <div>
+        <label style='display:block;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px'>Time Range</label>
+        <select id='exportDays' style='margin:0'>
+          <option value=''>All time</option>
+          <option value='7'>Last 7 days</option>
+          <option value='30' selected>Last 30 days</option>
+          <option value='90'>Last 90 days</option>
+        </select>
+      </div>
+      <button onclick='exportSessionsCSV()' style='margin-top:4px'><i class='fa fa-file-csv'></i> Download CSV</button>
+    </div>
+  </div>
+
+  <!-- Bulk Cleanup -->
+  <div class='box'>
+    <div style='display:flex;align-items:center;gap:12px;margin-bottom:16px'>
+      <div style='width:42px;height:42px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0'><i class='fa fa-trash-can' style='color:#ef4444;font-size:16px'></i></div>
+      <div><h3 style='margin:0;font-size:15px'>Bulk Cleanup</h3><p style='color:#64748b;font-size:12px;margin:2px 0 0'>Delete expired sessions by age</p></div>
+    </div>
+    <div style='display:flex;flex-direction:column;gap:12px'>
+      <div>
+        <label style='display:block;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px'>Delete sessions older than</label>
+        <select id='cleanupDays' style='margin:0'>
+          <option value='7'>7 days</option>
+          <option value='30' selected>30 days</option>
+          <option value='90'>90 days</option>
+          <option value='180'>180 days</option>
+        </select>
+      </div>
+      <button style='background:#ef4444;margin-top:4px' onclick='bulkCleanup()'><i class='fa fa-trash'></i> Delete Expired Sessions</button>
+    </div>
+    <div style='margin-top:16px;padding-top:16px;border-top:1px solid #fee2e2;background:#fef9f9;border-radius:12px;padding:14px;margin-top:16px'>
+      <div style='display:flex;align-items:center;gap:8px;margin-bottom:8px'>
+        <i class='fa fa-triangle-exclamation' style='color:#ef4444'></i>
+        <span style='font-size:12px;font-weight:600;color:#ef4444'>Danger Zone</span>
+      </div>
+      <p style='color:#64748b;font-size:12px;margin-bottom:10px'>Permanently removes all session records. Cannot be undone.</p>
+      <button style='background:#7c3aed;width:100%' onclick='deleteAllSessions()'><i class='fa fa-circle-exclamation'></i> Delete All Sessions</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Flagged Sessions -->
+<div class='box'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>
+    <div>
+      <h3 style='margin:0'><i class='fa fa-flag' style='color:#f59e0b;margin-right:8px'></i>Flagged Sessions</h3>
+      <p style='color:#64748b;font-size:13px;margin-top:4px'>Sessions marked for follow-up.</p>
+    </div>
+    <button onclick='renderFlagged()'><i class='fa fa-rotate-right'></i> Refresh</button>
+  </div>
+  <div id='flaggedList' style='margin-top:16px;display:flex;flex-direction:column;gap:10px'></div>
+  <div style='display:flex;justify-content:center;align-items:center;gap:14px;margin-top:16px'>
+    <button id='flagPrevBtn' onclick='changeFlagPage(-1)' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'>← Prev</button>
+    <span id='flagPageInfo' style='font-size:13px;color:#64748b'>Page 1 of 1</span>
+    <button id='flagNextBtn' onclick='changeFlagPage(1)' style='background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'>Next →</button>
+  </div>
+</div>
+</div>
+
+<div class='page' id='staff'>
+<div class='page-banner' style='background:linear-gradient(135deg,#1e40af,#1d4ed8)'>
+  <div><h2 class='pb-title'><i class='fa fa-envelope'></i> Notify Staff</h2><p class='pb-desc'>Manage librarian contacts. Active contacts are automatically notified by email when a patron requests a librarian.</p></div>
+  <div class='pb-stat'><div class='pb-stat-num' id='staffCountBadge'>1</div><div class='pb-stat-label'>Contacts</div></div>
+</div>
+<div class='box'><div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:20px'><h3 style='margin:0;font-size:15px'><i class='fa fa-address-book' style='color:#1d4ed8;margin-right:8px'></i>Contacts</h3><button onclick='addContact()'><i class='fa fa-plus'></i> Add Contact</button></div><div id='staffGrid' style='display:grid;grid-template-columns:repeat(3,1fr);gap:14px'></div></div>
+</div><!-- end #staff -->
+
+<!-- FAQ Modal -->
+<div id='faqModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center'>
+<div style='background:#fff;width:600px;max-width:95%;border-radius:24px;padding:28px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.15)'>
+
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:20px'>
+    <div>
+      <h2 style='margin:0;font-size:20px'>Add FAQ</h2>
+      <p style='color:#64748b;font-size:13px;margin-top:5px'>Create a new chatbot FAQ item</p>
+    </div>
+    <span onclick='closeFAQModal()' style='font-size:24px;cursor:pointer;color:#64748b;line-height:1'>&times;</span>
+  </div>
+
+  <div style='overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px;padding-right:4px'>
+
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Title <span style='color:#ef4444'>*</span></label>
+      <input id='faqTitle' placeholder='e.g. Library Hours' style='margin:0'>
+    </div>
+
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Question <span style='color:#ef4444'>*</span></label>
+      <input id='faqQuestion' placeholder='e.g. What are the library hours?' style='margin:0'>
+    </div>
+
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Answer</label>
+      <textarea id='faqAnswer' rows='4' placeholder='Type the chatbot response here...' style='margin:0;resize:vertical'></textarea>
+    </div>
+
+    <div>
+      <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>
+        <label style='font-weight:500;font-size:14px;margin:0'>Links <span style='color:#94a3b8;font-weight:400;font-size:12px'>(word + URL pairs)</span></label>
+        <button type='button' onclick='addFAQLinkRow("faqLinksContainer")' style='padding:5px 12px;font-size:12px;border-radius:8px'><i class='fa fa-plus'></i> Add Link</button>
+      </div>
+      <div id='faqLinksContainer' style='display:flex;flex-direction:column;gap:8px'></div>
+    </div>
+
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Image <span style='color:#94a3b8;font-weight:400'>(optional)</span></label>
+      <label style='display:flex;align-items:center;gap:10px;border:1px solid #dbe3ef;border-radius:12px;padding:12px 16px;cursor:pointer;background:#f8fafc;margin:0'>
+        <i class='fa fa-image' style='color:#2563eb'></i>
+        <span id='faqImageName' style='color:#64748b;font-size:13px'>Click to attach an image...</span>
+        <input id='faqImage' type='file' accept='image/*' style='display:none;width:auto;margin:0;padding:0;border:none;background:none' onchange="document.getElementById('faqImageName').textContent=this.files[0]?this.files[0].name:'Click to attach an image...'">
+      </label>
+    </div>
+
+  </div>
+
+  <div style='display:flex;justify-content:flex-end;gap:10px;margin-top:20px'>
+    <button style='background:#64748b' onclick='closeFAQModal()'>Cancel</button>
+    <button onclick='saveFAQModal()'><i class='fa fa-plus'></i> Add FAQ</button>
+  </div>
+
+</div>
+</div>
+
+<!-- Edit FAQ Modal -->
+<div id='editFAQModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center'>
+<div style='background:#fff;width:600px;max-width:95%;border-radius:24px;padding:28px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.15)'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:20px'>
+    <div>
+      <h2 style='margin:0;font-size:20px'>Edit FAQ</h2>
+      <p style='color:#64748b;font-size:13px;margin-top:5px'>Update this FAQ item</p>
+    </div>
+    <span onclick='closeEditFAQModal()' style='font-size:24px;cursor:pointer;color:#64748b;line-height:1'>&times;</span>
+  </div>
+  <div style='overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px;padding-right:4px'>
+    <input id='editFAQIndex' type='hidden'>
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Title <span style='color:#ef4444'>*</span></label>
+      <input id='editFAQTitle' placeholder='e.g. Library Hours' style='margin:0'>
+    </div>
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Question <span style='color:#ef4444'>*</span></label>
+      <input id='editFAQQuestion' placeholder='e.g. What are the library hours?' style='margin:0'>
+    </div>
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Answer</label>
+      <textarea id='editFAQAnswer' rows='4' placeholder='Type the chatbot response here...' style='margin:0;resize:vertical'></textarea>
+    </div>
+    <div>
+      <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>
+        <label style='font-weight:500;font-size:14px;margin:0'>Links <span style='color:#94a3b8;font-weight:400;font-size:12px'>(word + URL pairs)</span></label>
+        <button type='button' onclick='addFAQLinkRow("editFAQLinksContainer")' style='padding:5px 12px;font-size:12px;border-radius:8px'><i class='fa fa-plus'></i> Add Link</button>
+      </div>
+      <div id='editFAQLinksContainer' style='display:flex;flex-direction:column;gap:8px'></div>
+    </div>
+    <div>
+      <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Image <span style='color:#94a3b8;font-weight:400'>(optional)</span></label>
+      <label style='display:flex;align-items:center;gap:10px;border:1px solid #dbe3ef;border-radius:12px;padding:12px 16px;cursor:pointer;background:#f8fafc;margin:0'>
+        <i class='fa fa-image' style='color:#2563eb'></i>
+        <span id='editFAQImageName' style='color:#64748b;font-size:13px'>Click to replace image...</span>
+        <input id='editFAQImage' type='file' accept='image/*' style='display:none;width:auto;margin:0;padding:0;border:none;background:none' onchange="document.getElementById('editFAQImageName').textContent=this.files[0]?this.files[0].name:'Click to replace image...'">
+      </label>
+    </div>
+  </div>
+  <div style='display:flex;justify-content:flex-end;gap:10px;margin-top:20px'>
+    <button style='background:#64748b' onclick='closeEditFAQModal()'>Cancel</button>
+    <button onclick='saveEditFAQ()'><i class='fa fa-save'></i> Save Changes</button>
+  </div>
+</div>
+</div>
+
+<!-- Delete FAQ Modal -->
+<div id='deleteFAQModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center'>
+<div style='background:#fff;width:420px;max-width:95%;border-radius:24px;padding:28px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.15)'>
+  <div style='width:70px;height:70px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 18px'>
+    <i class='fa fa-trash' style='font-size:28px;color:#ef4444'></i>
+  </div>
+  <h2 style='margin:0 0 10px;font-size:20px'>Delete FAQ?</h2>
+  <p style='color:#64748b;font-size:14px;margin-bottom:8px'>You are about to delete:</p>
+  <div id='deleteFAQName' style='background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:12px;font-weight:600;color:#1e293b;margin-bottom:22px'></div>
+  <p style='color:#94a3b8;font-size:13px;margin-bottom:22px'>This action cannot be undone.</p>
+  <input id='deleteFAQIndex' type='hidden'>
+  <div style='display:flex;justify-content:center;gap:10px'>
+    <button style='background:#64748b' onclick='closeDeleteFAQModal()'>Cancel</button>
+    <button style='background:#ef4444' onclick='confirmDeleteFAQ()'><i class='fa fa-trash'></i> Delete</button>
+  </div>
+</div>
+</div>
+<div id='aiSaveModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;justify-content:center;align-items:center'>
+<div style='background:#fff;width:420px;border-radius:24px;padding:25px;text-align:center'>
+<i class='fa fa-circle-question' style='font-size:45px;margin-bottom:10px'></i>
+<h2>Confirm Changes</h2>
+<p style='color:#64748b;margin:10px 0 20px'>Are you sure you want to save AI setting changes?</p>
+<div style='display:flex;justify-content:center;gap:10px'>
+<button style='background:#64748b' onclick='closeAISaveModal()'>Cancel</button>
+<button onclick='confirmAISave()'>Confirm Save</button>
+</div>
+</div>
+</div>
+<!-- Session Chat Transcript Modal -->
+<div id='sessionModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center'>
+  <div style='background:#fff;width:600px;max-width:95%;border-radius:24px;padding:28px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.15)'>
+    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:18px'>
+      <div>
+        <h2 style='margin:0;font-size:20px' id='sessionModalTitle'>Chat Transcript</h2>
+        <p style='color:#64748b;font-size:13px;margin-top:4px' id='sessionModalMeta'></p>
+      </div>
+      <span onclick="document.getElementById('sessionModal').style.display='none'" style='font-size:24px;cursor:pointer;color:#64748b;line-height:1'>&times;</span>
+    </div>
+    <div id='sessionChatLog' style='overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;padding-right:4px'></div>
+    <div style='margin-top:18px;text-align:right'>
+      <button style='background:#64748b' onclick="document.getElementById('sessionModal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Live Chat Transcript Modal -->
+<div id='lchModal' style='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;justify-content:center;align-items:center'>
+<div style='background:#fff;width:600px;max-width:95%;border-radius:24px;padding:28px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.15)'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:18px'>
+    <div>
+      <h2 style='margin:0;font-size:20px' id='lchModalTitle'>Live Chat Transcript</h2>
+      <p style='color:#64748b;font-size:13px;margin-top:4px' id='lchModalMeta'></p>
+    </div>
+    <span onclick="document.getElementById('lchModal').style.display='none'" style='font-size:24px;cursor:pointer;color:#64748b;line-height:1'>&times;</span>
+  </div>
+  <div id='lchModalLog' style='overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;padding-right:4px'></div>
+  <div style='margin-top:18px;text-align:right'>
+    <button style='background:#64748b' onclick="document.getElementById('lchModal').style.display='none'">Close</button>
+  </div>
+</div>
+</div>
+
+<!-- Shared Confirm Modal -->
+<div id='confirmModal'>
+  <div style='width:400px;max-width:95%;text-align:center'>
+    <div id='confirmIcon' style='width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px'>
+      <i id='confirmIconI' style='font-size:28px'></i>
+    </div>
+    <h2 id='confirmTitle' style='margin:0 0 10px;font-size:20px'></h2>
+    <p id='confirmMessage' style='color:#64748b;font-size:14px;margin-bottom:24px;line-height:1.6'></p>
+    <div style='display:flex;justify-content:center;gap:10px'>
+      <button style='background:#64748b' onclick='closeConfirmModal()'>Cancel</button>
+      <button id='confirmOkBtn' onclick='_confirmCallback()'></button>
+    </div>
+  </div>
+</div>
+
+<!-- Staff Add/Edit Modal -->
+<div id='staffModal'>
+  <div style='width:480px;max-width:95%;border-radius:24px'>
+    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:20px'>
+      <div>
+        <h2 id='staffModalTitle' style='margin:0;font-size:20px'>Add Contact</h2>
+        <p style='color:#64748b;font-size:13px;margin-top:5px'>Fill in the staff contact details</p>
+      </div>
+      <span onclick='closeStaffModal()' style='font-size:24px;cursor:pointer;color:#64748b;line-height:1'>&times;</span>
+    </div>
+    <input id='staffModalIndex' type='hidden'>
+    <div style='display:flex;flex-direction:column;gap:14px'>
+      <div>
+        <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Name <span style='color:#ef4444'>*</span></label>
+        <input id='staffModalName' placeholder='e.g. Jane Doe' style='margin:0'>
+      </div>
+      <div>
+        <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Email <span style='color:#ef4444'>*</span></label>
+        <input id='staffModalEmail' placeholder='e.g. jane@library.edu' style='margin:0'>
+      </div>
+      <div>
+        <label style='display:block;font-weight:500;font-size:14px;margin-bottom:4px'>Status</label>
+        <select id='staffModalStatus' style='margin:0'>
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div style='display:flex;justify-content:flex-end;gap:10px;margin-top:20px'>
+      <button style='background:#64748b' onclick='closeStaffModal()'>Cancel</button>
+      <button id='staffModalSaveBtn' onclick='saveStaffModal()'><i class='fa fa-save'></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id='adminToast'></div>
+
+</div><!-- end #adminPage -->
+
+
+<script>
+// ===== GLOBAL STATE =====
+let apiKey = sessionStorage.getItem('admin_api_key') || '';
+function getKey(){ return sessionStorage.getItem('admin_api_key') || ''; }
+
+const loginForm = document.getElementById('loginForm');
+const loginPage = document.getElementById('loginPage');
+const adminPage = document.getElementById('adminPage');
+
+// ===== API FETCH HELPER =====
+async function apiFetch(path, options) {
+  try {
+    const resp = await fetch(path, Object.assign({ headers: { 'X-Admin-Key': getKey() } }, options || {}));
+    if (resp.status === 401) {
+      openToast('Session expired. Please log in again.', true);
+      doLogout();
+      return null;
+    }
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      openToast((err.error || 'Request failed: ' + resp.status), true);
+      return null;
+    }
+    return await resp.json();
+  } catch (e) {
+    openToast('Network error: ' + e.message, true);
+    return null;
+  }
+}
+
+// ===== HELPERS =====
+function escapeHtml(text) {
+  if (!text) return '';
+  var d = document.createElement('div');
+  d.textContent = String(text);
+  return d.innerHTML;
+}
+function formatTime(ts) {
+  if (!ts) return '—';
+  var d = new Date(typeof ts === 'number' ? ts * 1000 : ts);
+  return isNaN(d) ? String(ts) : d.toLocaleString();
+}
+
+// ===== LOGIN =====
+loginForm.addEventListener('submit', async function(e){
+  e.preventDefault();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!username || !password) { openToast('Username and password are required', true); return; }
+  const btn = loginForm.querySelector('.btn-login');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/admin/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && data.api_key) {
+      apiKey = data.api_key;
+      sessionStorage.setItem('admin_api_key', apiKey);
+      sessionStorage.setItem('admin_username', username);
+      loginPage.style.display = 'none';
+      document.body.classList.remove('login-active');
+      adminPage.classList.add('active');
+      document.body.classList.add('admin-active');
+      initAdmin();
+    } else {
+      openToast(data.error || 'Invalid credentials', true);
+    }
+  } catch(err) {
+    openToast('Network error. Please try again.', true);
+  }
+  btn.disabled = false;
+});
+
+// Auto-login if key exists in sessionStorage
+(function checkAutoLogin(){
+  const key = sessionStorage.getItem('admin_api_key');
+  if (!key) return;
+  apiKey = key;
+  // Verify key is still valid
+  fetch('/admin/api/verify', { headers: { 'X-Admin-Key': key } })
+    .then(function(r) {
+      if (r.status === 401) { doLogout(); return; }
+      loginPage.style.display = 'none';
+      document.body.classList.remove('login-active');
+      adminPage.classList.add('active');
+      document.body.classList.add('admin-active');
+      initAdmin();
+    })
+    .catch(function() {
+      // If server unreachable, still show admin (offline mode)
+      loginPage.style.display = 'none';
+      document.body.classList.remove('login-active');
+      adminPage.classList.add('active');
+      document.body.classList.add('admin-active');
+      initAdmin();
+    });
+})();
+
+// Logout
+function doLogout(){
+  sessionStorage.removeItem('admin_api_key');
+  sessionStorage.removeItem('admin_username');
+  apiKey = '';
+  adminPage.classList.remove('active');
+  loginPage.style.display = 'block';
+  document.body.classList.remove('admin-active');
+  document.body.classList.add('login-active');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  openConfirmModal({
+    icon:'fa-right-from-bracket', iconBg:'#eff6ff', iconColor:'#2563eb',
+    title:'Logout', message:'Are you sure you want to logout?',
+    confirmText:'Logout', confirmBg:'#2563eb',
+    onConfirm: doLogout
+  });
+});
+
+// ===== LOGIN UI =====
+document.getElementById('togglePassword').addEventListener('click', function(){
+  const p = document.getElementById('loginPass');
+  const type = p.getAttribute('type') === 'password' ? 'text' : 'password';
+  p.setAttribute('type', type);
+  this.classList.toggle('fa-eye');
+  this.classList.toggle('fa-eye-slash');
+});
+
+document.getElementById('forgotBtn').onclick = function(e){
+  e.preventDefault();
+  document.getElementById('forgotModal').style.display = 'flex';
+};
+document.getElementById('closeModal').onclick = function(){
+  document.getElementById('forgotModal').style.display = 'none';
+};
+
+// Dark mode (login page)
+document.getElementById('darkModeToggle').addEventListener('click', function(){
+  loginPage.classList.toggle('dark');
+  const icon = document.getElementById('darkIcon');
+  const text = document.getElementById('darkText');
+  if(loginPage.classList.contains('dark')){
+    icon.classList.replace('fa-moon','fa-sun');
+    text.innerText = 'Light Mode';
+  } else {
+    icon.classList.replace('fa-sun','fa-moon');
+    text.innerText = 'Dark Mode';
+  }
+});
+
+// ===== ADMIN INIT =====
+function initAdmin(){
+  // Show logged-in username in header
+  const usernameEl = document.getElementById('adminUsername');
+  if(usernameEl){
+    const stored = sessionStorage.getItem('admin_username') || 'admin';
+    usernameEl.textContent = stored;
+  }
+
+  // Navigation
+  document.querySelectorAll('.menu a').forEach(x => x.onclick = () => {
+    document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
+    x.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(x.dataset.page).classList.add('active');
+    // Load API data when switching tabs
+    if(x.dataset.page === 'sessions') loadSessions();
+    if(x.dataset.page === 'library') loadLibraryInfo();
+    if(x.dataset.page === 'ai') loadAiSettings();
+    if(x.dataset.page === 'hours') loadLibraryHours();
+    if(x.dataset.page === 'performance') { loadStaffRatings(); loadLiveChatHistory(); }
+    if(x.dataset.page === 'staff') loadContacts();
+    if(x.dataset.page === 'management') loadFlaggedSessions();
+    if(x.dataset.page === 'live') loadHandoffQueue();
+    if(x.dataset.page === 'dashboard') loadDashboardStats();
+  });
+
+  // Load initial data
+  loadDashboardStats();
+  loadSessions();
+
+  // Chart
+  if(document.getElementById('analyticsChart')){
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    document.head.appendChild(s);
+    s.onload = () => {
+      new Chart(document.getElementById('analyticsChart'),{
+        type:'line',
+        data:{
+          labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+          datasets:[{label:'Chat Sessions',data:[12,19,9,25,17,29,22],borderColor:'#2563eb',tension:.4,fill:false}]
+        },
+        options:{plugins:{legend:{display:true}},responsive:true}
+      });
+    };
+  }
+
+  // Admin dark mode toggle
+  document.getElementById('adminDarkToggle').addEventListener('click', function(){
+    adminPage.classList.toggle('dark');
+    document.body.classList.toggle('admin-dark');
+    const icon = document.getElementById('adminDarkIcon');
+    const text = document.getElementById('adminDarkText');
+    if(adminPage.classList.contains('dark')){
+      icon.classList.replace('fa-moon','fa-sun');
+      text.innerText = 'Light Mode';
+    } else {
+      icon.classList.replace('fa-sun','fa-moon');
+      text.innerText = 'Dark Mode';
+    }
+  });
+
+  // Start live chat queue polling
+  loadHandoffQueue();
+  setInterval(function(){
+    var livePage = document.getElementById('live');
+    if(livePage && livePage.classList.contains('active')) loadHandoffQueue();
+  }, 5000);
+}
+
+// ===== DASHBOARD STATS =====
+async function loadDashboardStats(){
+  const data = await apiFetch('/admin/api/stats');
+  if(!data) return;
+  // Update dashboard cards if they exist
+  const cards = document.querySelectorAll('#dashboard .card h1');
+  if(cards.length >= 4){
+    cards[0].textContent = data.total_sessions || 0;
+    cards[1].textContent = data.total_messages || 0;
+    cards[2].textContent = data.active_sessions || 0;
+  }
+  // Update banner stat
+  const bannerStat = document.querySelector('#dashboard .pb-stat-num');
+  if(bannerStat) bannerStat.textContent = data.total_sessions || 0;
+}
+
+// ===== SESSIONS TAB =====
+let sessionsPage = 1;
+const sessionsPageSize = 20;
+
+async function loadSessions(){
+  const params = new URLSearchParams();
+  params.set('page', sessionsPage);
+  params.set('page_size', sessionsPageSize);
+  const search = document.getElementById('sessionSearch') ? document.getElementById('sessionSearch').value.trim() : '';
+  const statusF = document.getElementById('sessionStatusFilter') ? document.getElementById('sessionStatusFilter').value : '';
+  if(search) params.set('search', search);
+  if(statusF) params.set('status', statusF);
+  const data = await apiFetch('/admin/api/sessions?' + params.toString());
+  if(!data) return;
+  renderSessionsTable(data.sessions || []);
+  updateSessionsPagination(data.total || 0);
+}
+
+function renderSessionsTable(sessions){
+  const tbody = document.getElementById('sessionsTable');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!sessions.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:28px">No sessions found.</td></tr>';
+    return;
+  }
+  sessions.forEach(s => {
+    const statusBg = s.status === 'active' ? '#dcfce7' : '#fef3c7';
+    const statusColor = s.status === 'active' ? '#166534' : '#92400e';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code style="font-size:12px">${escapeHtml((s.session_id||'').substring(0,8))}…</code></td>
+      <td>${escapeHtml(s.display_name || 'Anonymous')}</td>
+      <td style="font-size:12px;color:#64748b">${formatTime(s.created_at)}</td>
+      <td style="font-size:12px;color:#64748b">${formatTime(s.last_activity)}</td>
+      <td style="text-align:center;font-weight:600">${s.message_count || 0}</td>
+      <td><span style="background:${statusBg};color:${statusColor};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">${escapeHtml(s.status)}</span></td>
+      <td><button onclick="viewSessionAPI('${escapeHtml(s.session_id)}')" style="padding:6px 12px;font-size:12px;border-radius:8px"><i class="fa fa-eye"></i> View</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateSessionsPagination(total){
+  const pages = Math.max(1, Math.ceil(total / sessionsPageSize));
+  const info = document.getElementById('sessionPageInfo');
+  const prev = document.getElementById('sessionPrevBtn');
+  const next = document.getElementById('sessionNextBtn');
+  if(info) info.textContent = `Page ${sessionsPage} of ${pages}`;
+  if(prev) prev.disabled = sessionsPage <= 1;
+  if(next) next.disabled = sessionsPage >= pages;
+}
+
+window.changeSessionPage = function(dir){
+  sessionsPage += dir;
+  if(sessionsPage < 1) sessionsPage = 1;
+  loadSessions();
+};
+
+window.viewSessionAPI = async function(sessionId){
+  const data = await apiFetch('/admin/api/sessions/' + encodeURIComponent(sessionId));
+  if(!data) return;
+  document.getElementById('sessionModalTitle').textContent = 'Chat Transcript — ' + sessionId.substring(0,8) + '…';
+  document.getElementById('sessionModalMeta').textContent = `${escapeHtml(data.display_name || 'Anonymous')} · ${formatTime(data.created_at)} · ${data.message_count} messages · ${data.status}`;
+  const log = document.getElementById('sessionChatLog');
+  log.innerHTML = '';
+  if(!data.messages || !data.messages.length){
+    log.innerHTML = `<div style='text-align:center;padding:32px;color:#94a3b8'><i class='fa fa-comment-slash' style='font-size:32px;color:#e2e8f0;display:block;margin-bottom:10px'></i><p style='font-size:13px'>No messages in this session.</p></div>`;
+  } else {
+    data.messages.forEach(m => {
+      const isBot = m.role === 'assistant';
+      log.innerHTML += `
+        <div style='display:flex;flex-direction:column;align-items:${isBot ? 'flex-start' : 'flex-end'}'>
+          <span style='font-size:11px;color:#94a3b8;margin-bottom:3px'>${isBot ? '🤖 LLORA' : '👤 Patron'} · ${formatTime(m.timestamp)}</span>
+          <div style='max-width:80%;padding:12px 16px;border-radius:${isBot ? '4px 18px 18px 18px' : '18px 4px 18px 18px'};background:${isBot ? '#f1f5f9' : '#2563eb'};color:${isBot ? '#1e293b' : '#fff'};font-size:14px;line-height:1.6'>${escapeHtml(m.content)}</div>
+        </div>`;
+    });
+  }
+  document.getElementById('sessionModal').style.display = 'flex';
+};
+
+// Wire up session search/filter if elements exist
+document.addEventListener('DOMContentLoaded', function(){
+  const searchBtn = document.getElementById('sessionSearchBtn');
+  if(searchBtn) searchBtn.onclick = () => { sessionsPage = 1; loadSessions(); };
+  const searchInput = document.getElementById('sessionSearch');
+  if(searchInput) searchInput.addEventListener('keydown', e => { if(e.key==='Enter'){ sessionsPage=1; loadSessions(); } });
+});
+
+// ===== FAQ / LIBRARY INFO TAB =====
+// Keep admin.html's card UI but load/save via API
+let faqs = [];
+
+async function loadLibraryInfo(){
+  const data = await apiFetch('/admin/api/library-info');
+  if(!data) return;
+  faqs = (data.faqs || []).map(f => ({
+    name: f.label || f.name || '',
+    question: f.question || '',
+    desc: f.content || f.desc || '',
+    links: f.links || [],
+    image: f.image_url || f.image || ''
+  }));
+  renderFAQ();
+}
+
+async function saveFaqsToServer(){
+  const payload = {
+    faqs: faqs.map(f => ({
+      label: f.name,
+      question: f.question,
+      content: f.desc,
+      links: f.links || [],
+      image_url: f.image || ''
+    }))
+  };
+  try {
+    const resp = await fetch('/admin/api/library-info', {
+      method: 'PUT',
+      headers: { 'X-Admin-Key': getKey(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(resp.ok){
+      openToast('FAQs saved successfully');
+      return true;
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      openToast(err.error || 'Save failed', true);
+      return false;
+    }
+  } catch(e) {
+    openToast('Network error', true);
+    return false;
+  }
+}
+
+function renderFAQ(){
+  const container = document.getElementById('faqGrid');
+  if(!container) return;
+  const badge = document.getElementById('faqCountBadge');
+  if(badge) badge.textContent = faqs.length;
+  const keyword = (document.getElementById('faqSearch')?.value || '').toLowerCase();
+  container.innerHTML = '';
+  const filtered = faqs.filter(f =>
+    (f.name||'').toLowerCase().includes(keyword) ||
+    (f.desc||'').toLowerCase().includes(keyword) ||
+    (f.question||'').toLowerCase().includes(keyword)
+  );
+  if(faqs.length === 0){
+    container.style.display = 'block';
+    container.innerHTML = `<div style='text-align:center;padding:48px 20px;color:#94a3b8'><i class='fa fa-book-open' style='font-size:40px;color:#e2e8f0;display:block;margin-bottom:12px'></i><p style='font-weight:500;color:#64748b;margin-bottom:4px'>No FAQs yet</p><p style='font-size:13px'>Click <b>Add FAQ</b> to create your first one.</p></div>`;
+    return;
+  }
+  if(filtered.length === 0){
+    container.style.display = 'block';
+    container.innerHTML = `<div style='text-align:center;padding:32px 20px;color:#94a3b8'><i class='fa fa-magnifying-glass' style='font-size:32px;color:#e2e8f0;display:block;margin-bottom:10px'></i><p style='font-size:13px'>No FAQs match "<b>${keyword}</b>"</p></div>`;
+    return;
+  }
+  container.style.display = '';
+  filtered.forEach((f, i) => {
+    const realIndex = faqs.indexOf(f);
+    let renderedAnswer = f.desc || '';
+    (f.links||[]).filter(l=>l.word&&l.url).forEach(({word, url}) => {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      renderedAnswer = renderedAnswer.replace(new RegExp(escaped, 'g'),
+        `<a href='${url}' target='_blank' style='color:#2563eb;font-weight:600;text-decoration:underline;text-underline-offset:2px'>${word}</a>`);
+    });
+    const answerId = `faq-ans-${realIndex}`;
+    const toggleId = `faq-tog-${realIndex}`;
+    const hasLongAnswer = (f.desc||'').length > 120;
+    const linkCount = (f.links||[]).filter(l=>l.word&&l.url).length;
+    const accentColors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0284c7','#db2777','#0f766e'];
+    const accent = accentColors[realIndex % accentColors.length];
+    container.innerHTML += `
+      <div class='faq' style='display:flex'>
+        <div class='faq-accent' style='background:${accent}'></div>
+        <div style='flex:1;min-width:0;display:flex;flex-direction:column'>
+          <div class='faq-body'>
+            <div class='faq-title'>
+              <div style='width:30px;height:30px;border-radius:8px;background:${accent}18;display:flex;align-items:center;justify-content:center;flex-shrink:0'><i class='fa fa-circle-question' style='color:${accent};font-size:12px'></i></div>
+              <span style='flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>${f.name}</span>
+              <span style='font-size:11px;color:#cbd5e1;font-weight:400;flex-shrink:0'>#${realIndex+1}</span>
+            </div>
+            ${f.question ? `<div class='faq-field'><div class='faq-field-label'>Question</div><div class='faq-field-value'>${f.question}</div></div>` : ''}
+            ${f.desc ? `<div class='faq-field'><div class='faq-field-label'>Answer</div><div class='faq-field-value faq-answer-text' id='${answerId}'>${renderedAnswer}</div>${hasLongAnswer ? `<span class='faq-toggle' id='${toggleId}' onclick='toggleFAQAnswer("${answerId}","${toggleId}")'>Show more</span>` : ''}</div>` : ''}
+            ${f.image ? `<img src='${f.image}' style='width:100%;max-width:200px;border-radius:10px;margin-top:10px;border:1px solid #e5e7eb'>` : ''}
+          </div>
+          <div class='faq-footer'>
+            <div style='display:flex;gap:5px;flex-wrap:wrap'>
+              ${linkCount ? `<span style='display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500'><i class='fa fa-link' style='font-size:9px'></i>${linkCount} link${linkCount!==1?'s':''}</span>` : ''}
+              ${f.image ? `<span style='display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500'><i class='fa fa-image' style='font-size:9px'></i>image</span>` : ''}
+              ${!linkCount && !f.image ? `<span style='font-size:11px;color:#e2e8f0'>—</span>` : ''}
+            </div>
+            <div style='display:flex;gap:6px'>
+              <button onclick='editFAQ(${realIndex})' style='padding:7px 12px;font-size:12px;border-radius:8px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'><i class='fa fa-pen'></i></button>
+              <button onclick='deleteFAQ(${realIndex})' style='background:#fef2f2;color:#ef4444;border:1px solid #fecaca;padding:7px 12px;font-size:12px;border-radius:8px'><i class='fa fa-trash'></i></button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+window.toggleFAQAnswer = function(answerId, toggleId){
+  const el = document.getElementById(answerId);
+  const tog = document.getElementById(toggleId);
+  el.classList.toggle('expanded');
+  tog.textContent = el.classList.contains('expanded') ? 'Show less' : 'Show more';
+};
+
+window.openFAQModal = function(){
+  document.getElementById('faqTitle').value='';
+  document.getElementById('faqQuestion').value='';
+  document.getElementById('faqAnswer').value='';
+  document.getElementById('faqImage').value='';
+  document.getElementById('faqImageName').textContent='Click to upload an image...';
+  document.getElementById('faqLinksContainer').innerHTML='';
+  addFAQLinkRow('faqLinksContainer');
+  document.getElementById('faqModal').style.display='flex';
+};
+window.closeFAQModal = function(){ document.getElementById('faqModal').style.display = 'none'; };
+window.saveFAQModal = async function(){
+  const title = document.getElementById('faqTitle').value.trim();
+  const question = document.getElementById('faqQuestion').value.trim();
+  const answer = document.getElementById('faqAnswer').value.trim();
+  const file = document.getElementById('faqImage').files[0];
+  if(!title || !question){ openToast('Title and question are required', true); return; }
+  const links = collectLinkRows('faqLinksContainer');
+  const saveData = async (img='') => {
+    faqs.push({name:title, question:question, desc:answer, links, image:img});
+    const ok = await saveFaqsToServer();
+    if(ok){ closeFAQModal(); renderFAQ(); }
+  };
+  if(file){ const r = new FileReader(); r.onload = e => saveData(e.target.result); r.readAsDataURL(file); }
+  else await saveData();
+};
+
+window.editFAQ = function(i){
+  const f = faqs[i];
+  document.getElementById('editFAQIndex').value = i;
+  document.getElementById('editFAQTitle').value = f.name || '';
+  document.getElementById('editFAQQuestion').value = f.question || '';
+  document.getElementById('editFAQAnswer').value = f.desc || '';
+  document.getElementById('editFAQImage').value = '';
+  document.getElementById('editFAQImageName').textContent = f.image ? 'Image attached' : 'Click to replace image...';
+  const c = document.getElementById('editFAQLinksContainer');
+  c.innerHTML = '';
+  const links = f.links && f.links.length ? f.links : [{word:'', url:''}];
+  links.forEach(l => addFAQLinkRow('editFAQLinksContainer', l.word, l.url));
+  document.getElementById('editFAQModal').style.display = 'flex';
+};
+window.closeEditFAQModal = function(){ document.getElementById('editFAQModal').style.display = 'none'; };
+window.saveEditFAQ = async function(){
+  const i = parseInt(document.getElementById('editFAQIndex').value);
+  const title = document.getElementById('editFAQTitle').value.trim();
+  const question = document.getElementById('editFAQQuestion').value.trim();
+  const answer = document.getElementById('editFAQAnswer').value.trim();
+  if(!title || !question){ openToast('Title and question are required', true); return; }
+  const links = collectLinkRows('editFAQLinksContainer');
+  const file = document.getElementById('editFAQImage').files[0];
+  const save = async (img) => {
+    faqs[i] = { name:title, question:question, desc:answer, links, image: img !== undefined ? img : faqs[i].image };
+    const ok = await saveFaqsToServer();
+    if(ok){ closeEditFAQModal(); renderFAQ(); }
+  };
+  if(file){ const r = new FileReader(); r.onload = e => save(e.target.result); r.readAsDataURL(file); }
+  else await save(undefined);
+};
+
+window.deleteFAQ = function(i){
+  document.getElementById('deleteFAQIndex').value = i;
+  document.getElementById('deleteFAQName').textContent = faqs[i].name;
+  document.getElementById('deleteFAQModal').style.display = 'flex';
+};
+window.closeDeleteFAQModal = function(){ document.getElementById('deleteFAQModal').style.display = 'none'; };
+window.confirmDeleteFAQ = async function(){
+  const i = parseInt(document.getElementById('deleteFAQIndex').value);
+  faqs.splice(i, 1);
+  const ok = await saveFaqsToServer();
+  if(ok){ closeDeleteFAQModal(); renderFAQ(); }
+};
+
+// ===== FAQ LINK HELPERS =====
+window.addFAQLinkRow = function(containerId, word='', url=''){
+  const c = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center';
+  row.innerHTML = `
+    <input placeholder='Highlighted word' value='${word}' style='margin:0' class='faq-link-word'>
+    <input placeholder='https://...' value='${url}' style='margin:0' class='faq-link-url'>
+    <button type='button' onclick='this.closest("div").remove()' style='background:#ef4444;padding:10px 12px;border-radius:10px;flex-shrink:0'><i class='fa fa-trash'></i></button>`;
+  c.appendChild(row);
+};
+
+function collectLinkRows(containerId){
+  const rows = document.querySelectorAll('#'+containerId+'>div');
+  return Array.from(rows).map(r => ({
+    word: r.querySelector('.faq-link-word').value.trim(),
+    url:  r.querySelector('.faq-link-url').value.trim()
+  })).filter(l => l.word || l.url);
+}
+
+// ===== AI SETTINGS TAB =====
+async function loadAiSettings(){
+  const data = await apiFetch('/admin/api/ai-settings');
+  if(!data) return;
+  // Map to admin.html's field IDs
+  const nameField = document.getElementById('aiName') || document.getElementById('ai-name');
+  const personalityField = document.getElementById('aiPersonality') || document.getElementById('ai-personality');
+  const limitationsField = document.getElementById('aiLimitations') || document.getElementById('ai-limitations');
+  const welcomeField = document.getElementById('aiWelcome') || document.getElementById('ai-welcome');
+  if(nameField) nameField.value = data.name || '';
+  if(personalityField) personalityField.value = data.personality || '';
+  if(limitationsField) limitationsField.value = data.limitations || '';
+  if(welcomeField) welcomeField.value = data.welcome_message || '';
+  // Also update the disabled textareas in admin.html's AI page
+  const aiFields = document.querySelectorAll('.aiField');
+  if(aiFields.length >= 1 && data.name) aiFields[0].value = data.name;
+  if(aiFields.length >= 2 && data.welcome_message) aiFields[1].value = data.welcome_message;
+  if(aiFields.length >= 3 && data.personality) aiFields[2].value = data.personality;
+  if(aiFields.length >= 4 && data.limitations) aiFields[3].value = data.limitations;
+}
+
+async function saveAiSettingsAPI(){
+  const aiFields = document.querySelectorAll('.aiField');
+  const payload = {
+    name: aiFields[0] ? aiFields[0].value.trim() : '',
+    welcome_message: aiFields[1] ? aiFields[1].value.trim() : '',
+    personality: aiFields[2] ? aiFields[2].value.trim() : '',
+    limitations: aiFields[3] ? aiFields[3].value.trim() : ''
+  };
+  if(!payload.name){ openToast('Assistant name is required', true); return; }
+  try {
+    const resp = await fetch('/admin/api/ai-settings', {
+      method: 'PUT',
+      headers: { 'X-Admin-Key': getKey(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(resp.ok){
+      openToast('AI settings saved successfully');
+      return true;
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      openToast(err.error || 'Save failed', true);
+      return false;
+    }
+  } catch(e) {
+    openToast('Network error', true);
+    return false;
+  }
+}
+
+window.openAISaveModal = () => document.getElementById('aiSaveModal').style.display = 'flex';
+window.closeAISaveModal = () => document.getElementById('aiSaveModal').style.display = 'none';
+window.confirmAISave = async () => {
+  closeAISaveModal();
+  const ok = await saveAiSettingsAPI();
+  if(ok){
+    document.querySelectorAll('.aiField').forEach(e => e.disabled = true);
+    const b = document.getElementById('aiSaveBtn');
+    if(b){ b.disabled = true; b.style.opacity = '.5'; b.style.cursor = 'not-allowed'; }
+    const lockIcon = document.getElementById('aiLockIcon');
+    const lockLabel = document.getElementById('aiLockLabel');
+    if(lockIcon){ lockIcon.className = 'fa fa-lock'; lockIcon.style.color = '#94a3b8'; }
+    if(lockLabel){ lockLabel.textContent = 'Settings are locked. Click Edit to make changes.'; lockLabel.style.color = '#64748b'; }
+  }
+};
+
+function enableAISave(){
+  const b = document.getElementById('aiSaveBtn');
+  if(b){ b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer'; }
+}
+
+// ===== LIBRARY HOURS TAB =====
+const HOUR_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+async function loadLibraryHours(){
+  const data = await apiFetch('/admin/api/library-hours');
+  if(!data) return;
+  // Map API format to admin.html's hours object
+  const hoursObj = {};
+  HOUR_DAYS.forEach(day => {
+    const key = day.toLowerCase();
+    const windows = data[key] || [];
+    if(windows.length > 0){
+      hoursObj[day] = { open: windows[0].open, close: windows[0].close, closed: false };
+    } else {
+      hoursObj[day] = { open: '08:00', close: '17:00', closed: true };
+    }
+  });
+  // Update the rendered hours UI
+  renderHoursFromAPI(hoursObj);
+}
+
+function renderHoursFromAPI(hoursObj){
+  const c = document.getElementById('hoursContainer');
+  if(!c) return;
+  c.innerHTML = '';
+  const dayIcons = {Monday:'fa-briefcase',Tuesday:'fa-briefcase',Wednesday:'fa-briefcase',Thursday:'fa-briefcase',Friday:'fa-briefcase',Saturday:'fa-umbrella-beach',Sunday:'fa-church'};
+  HOUR_DAYS.forEach(day => {
+    const h = hoursObj[day] || {open:'08:00', close:'17:00', closed:false};
+    const isWeekend = day === 'Saturday' || day === 'Sunday';
+    c.innerHTML += `
+      <div style='border:1px solid #e5e7eb;border-radius:16px;padding:18px 20px;margin-bottom:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;transition:.2s' class='hours-row'>
+        <div style='display:flex;align-items:center;gap:10px;min-width:140px'>
+          <div style='width:38px;height:38px;border-radius:10px;background:${h.closed?'#f1f5f9':isWeekend?'#fef3c7':'#eff6ff'};display:flex;align-items:center;justify-content:center;flex-shrink:0'>
+            <i class='fa ${dayIcons[day]}' style='color:${h.closed?'#94a3b8':isWeekend?'#d97706':'#2563eb'};font-size:14px'></i>
+          </div>
+          <div>
+            <div style='font-weight:600;font-size:14px;color:#1e293b'>${day}</div>
+            <div style='font-size:11px;color:#94a3b8'>${isWeekend?'Weekend':'Weekday'}</div>
+          </div>
+        </div>
+        <div style='display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap'>
+          <div style='display:flex;align-items:center;gap:8px'>
+            <span style='font-size:12px;color:#64748b;font-weight:500'>Open</span>
+            <input disabled type='time' id='${day}_open' value='${h.open}' ${h.closed?'disabled':''} style='margin:0;width:130px;padding:8px 12px;font-size:13px'>
+          </div>
+          <span style='color:#94a3b8;font-size:16px'>→</span>
+          <div style='display:flex;align-items:center;gap:8px'>
+            <span style='font-size:12px;color:#64748b;font-weight:500'>Close</span>
+            <input disabled type='time' id='${day}_close' value='${h.close}' ${h.closed?'disabled':''} style='margin:0;width:130px;padding:8px 12px;font-size:13px'>
+          </div>
+          <label style='display:flex;align-items:center;gap:6px;font-size:13px;color:#64748b;cursor:pointer;margin:0;padding:8px 12px;border:1px solid #e5e7eb;border-radius:10px;background:${h.closed?'#fef2f2':'#f8fafc'}'>
+            <input onchange="toggleDay('${day}')" type='checkbox' ${h.closed?'checked':''} style='width:auto;margin:0;padding:0;border:none;background:none'>
+            <span style='color:${h.closed?'#ef4444':'#64748b'}'>Closed</span>
+          </label>
+        </div>
+        <div style='display:flex;gap:8px;flex-shrink:0'>
+          <button onclick="enableDayEdit('${day}')" style='padding:8px 14px;font-size:12px;border-radius:10px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'><i class='fa fa-pen'></i> Edit</button>
+          <button onclick="saveDay('${day}')" style='padding:8px 14px;font-size:12px;border-radius:10px'><i class='fa fa-save'></i> Save</button>
+        </div>
+      </div>`;
+  });
+}
+
+// Keep renderHours as alias for backward compat
+function renderHours(){ loadLibraryHours(); }
+
+window.enableDayEdit = function(day){
+  openConfirmModal({
+    icon:'fa-pen', iconBg:'#eff6ff', iconColor:'#2563eb',
+    title:'Edit Hours', message:`Enable editing for <b>${day}</b>?`,
+    confirmText:'Edit', confirmBg:'#2563eb',
+    onConfirm(){
+      document.getElementById(day+'_open').disabled = false;
+      document.getElementById(day+'_close').disabled = false;
+    }
+  });
+};
+
+window.toggleDay = function(day){
+  const chk = event.target.checked;
+  document.getElementById(day+'_open').disabled = chk;
+  document.getElementById(day+'_close').disabled = chk;
+};
+
+window.saveDay = function(day){
+  openConfirmModal({
+    icon:'fa-save', iconBg:'#eff6ff', iconColor:'#2563eb',
+    title:'Save Hours', message:`Save hours for <b>${day}</b>?`,
+    confirmText:'Save', confirmBg:'#2563eb',
+    onConfirm: async function(){
+      const closed = document.querySelector(`input[onchange="toggleDay('${day}')"]`).checked;
+      const payload = {};
+      HOUR_DAYS.forEach(d => {
+        const key = d.toLowerCase();
+        const dClosed = document.querySelector(`input[onchange="toggleDay('${d}')"]`)?.checked;
+        if(dClosed){
+          payload[key] = [];
+        } else {
+          const open = document.getElementById(d+'_open')?.value;
+          const close = document.getElementById(d+'_close')?.value;
+          payload[key] = open && close ? [{open, close}] : [];
+        }
+      });
+      try {
+        const resp = await fetch('/admin/api/library-hours', {
+          method: 'PUT',
+          headers: { 'X-Admin-Key': getKey(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if(resp.ok){
+          openToast(`Hours for ${day} saved`);
+          document.getElementById(day+'_open').disabled = true;
+          document.getElementById(day+'_close').disabled = true;
+        } else {
+          const err = await resp.json().catch(() => ({}));
+          openToast(err.error || 'Save failed', true);
+        }
+      } catch(e) {
+        openToast('Network error', true);
+      }
+    }
+  });
+};
+
+// ===== STAFF CONTACTS TAB =====
+let staff = [];
+
+async function loadContacts(){
+  try {
+    const resp = await fetch('/admin/api/staff-contacts', { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    staff = Array.isArray(data) ? data : [];
+    renderStaff();
+  } catch(e) {
+    openToast('Failed to load contacts', true);
+  }
+}
+
+function renderStaff(){
+  const grid = document.getElementById('staffGrid');
+  if(!grid) return;
+  const badge = document.getElementById('staffCountBadge');
+  if(badge) badge.textContent = staff.length;
+  grid.innerHTML = '';
+  if(!staff.length){
+    grid.style.display = 'block';
+    grid.innerHTML = `<div style='text-align:center;padding:32px;color:#94a3b8'><i class='fa fa-address-book' style='font-size:36px;color:#e2e8f0;display:block;margin-bottom:10px'></i><p style='font-size:13px'>No contacts yet. Click <b>Add Contact</b> to add one.</p></div>`;
+    return;
+  }
+  grid.style.display = '';
+  const initials = name => (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const colors = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0284c7'];
+  staff.forEach((s, i) => {
+    const color = colors[i % colors.length];
+    const isActive = s.is_active !== undefined ? s.is_active : (s.status === 'Active');
+    const statusLabel = isActive ? 'Active' : 'Inactive';
+    grid.innerHTML += `
+      <div style='border:1px solid #e5e7eb;border-radius:18px;padding:20px;background:#fff;transition:.2s;position:relative;overflow:hidden'>
+        <div style='position:absolute;top:0;left:0;right:0;height:4px;background:${color}'></div>
+        <div style='display:flex;align-items:center;gap:12px;margin-bottom:14px'>
+          <div style='width:44px;height:44px;border-radius:12px;background:${color}20;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:${color};flex-shrink:0'>${initials(s.name)}</div>
+          <div style='min-width:0'>
+            <div style='font-weight:600;font-size:14px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>${escapeHtml(s.name)}</div>
+            <div style='font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>${escapeHtml(s.email)}</div>
+          </div>
+        </div>
+        <div style='display:flex;justify-content:space-between;align-items:center'>
+          <span style='display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${isActive?'#dcfce7':'#f1f5f9'};color:${isActive?'#166534':'#64748b'}'>
+            <i class='fa fa-circle' style='font-size:7px'></i>${statusLabel}
+          </span>
+          <div style='display:flex;gap:6px'>
+            <button onclick='editStaff(${i})' style='padding:6px 10px;font-size:12px;border-radius:8px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0'><i class='fa fa-pen'></i></button>
+            <button onclick='deleteStaff(${i})' style='padding:6px 10px;font-size:12px;border-radius:8px;background:#fef2f2;color:#ef4444;border:1px solid #fecaca'><i class='fa fa-trash'></i></button>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+window.addContact = function(){
+  openStaffModal(-1, {name:'', email:'', status:'Active'});
+};
+window.editStaff = function(i){ openStaffModal(i, staff[i]); };
+window.deleteStaff = function(i){
+  openConfirmModal({
+    icon:'fa-trash', iconBg:'#fef2f2', iconColor:'#ef4444',
+    title:'Delete Contact', message:`Remove <b>${escapeHtml(staff[i].name)}</b> from staff contacts?`,
+    confirmText:'Delete', confirmBg:'#ef4444',
+    onConfirm: async function(){
+      try {
+        const id = staff[i].id;
+        if(id){
+          await fetch('/admin/api/staff-contacts/' + id, {
+            method: 'DELETE', headers: { 'X-Admin-Key': getKey() }
+          });
+        }
+        await loadContacts();
+        openToast('Contact deleted');
+      } catch(e) { openToast('Delete failed', true); }
+    }
+  });
+};
+
+// ===== MANAGEMENT TAB =====
+window.exportSessionsCSV = function(){
+  const status = document.getElementById('exportStatus').value;
+  const days = document.getElementById('exportDays').value;
+  const params = new URLSearchParams();
+  if(status) params.set('status', status);
+  if(days) params.set('days', days);
+  const url = '/admin/api/export/csv?' + params.toString();
+  fetch(url, { headers: { 'X-Admin-Key': getKey() } })
+    .then(r => {
+      if(!r.ok) throw new Error('Export failed');
+      return r.blob();
+    })
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'sessions_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      openToast('CSV downloaded');
+    })
+    .catch(() => openToast('Export failed', true));
+};
+
+window.bulkCleanup = function(){
+  const days = parseInt(document.getElementById('cleanupDays').value);
+  openConfirmModal({
+    icon:'fa-trash', iconBg:'#fef2f2', iconColor:'#ef4444',
+    title:'Delete Expired Sessions',
+    message:`Permanently delete all expired sessions older than <b>${days} days</b>? This cannot be undone.`,
+    confirmText:'Delete', confirmBg:'#ef4444',
+    onConfirm: async function(){
+      try {
+        const resp = await fetch('/admin/api/cleanup?older_than_days=' + days, {
+          method: 'DELETE', headers: { 'X-Admin-Key': getKey() }
+        });
+        const data = await resp.json();
+        if(resp.ok){
+          openToast(`Deleted ${data.deleted_sessions || 0} sessions`);
+          loadFlaggedSessions();
+        } else {
+          openToast(data.error || 'Cleanup failed', true);
+        }
+      } catch(e) { openToast('Network error', true); }
+    }
+  });
+};
+
+window.deleteAllSessions = function(){
+  openConfirmModal({
+    icon:'fa-circle-exclamation', iconBg:'#f5f3ff', iconColor:'#7c3aed',
+    title:'Delete All Sessions',
+    message:'<b>This will permanently delete ALL session records.</b><br><br>This action cannot be undone.',
+    confirmText:'Delete All', confirmBg:'#7c3aed',
+    onConfirm: async function(){
+      try {
+        const resp = await fetch('/admin/api/cleanup/all', {
+          method: 'DELETE', headers: { 'X-Admin-Key': getKey() }
+        });
+        const data = await resp.json();
+        if(resp.ok){
+          openToast(`Deleted ${data.deleted_sessions || 0} sessions`);
+          loadFlaggedSessions();
+        } else {
+          openToast(data.error || 'Delete failed', true);
+        }
+      } catch(e) { openToast('Network error', true); }
+    }
+  });
+};
+
+let flagPage = 1;
+const flagPageSize = 4;
+
+async function loadFlaggedSessions(){
+  const data = await apiFetch('/admin/api/flagged-sessions?page=' + flagPage + '&page_size=10');
+  if(!data) return;
+  const badge = document.getElementById('flagCountBadge');
+  if(badge) badge.textContent = data.total || 0;
+  const container = document.getElementById('flaggedList');
+  if(!container) return;
+  container.innerHTML = '';
+  const flags = data.flags || [];
+  if(!flags.length){
+    container.innerHTML = `<div style='text-align:center;padding:32px;color:#94a3b8'><i class='fa fa-flag' style='font-size:32px;color:#e2e8f0;display:block;margin-bottom:10px'></i><p style='font-size:13px'>No flagged sessions.</p></div>`;
+    document.getElementById('flagPrevBtn').disabled = true;
+    document.getElementById('flagNextBtn').disabled = true;
+    document.getElementById('flagPageInfo').textContent = 'Page 1 of 1';
+    return;
+  }
+  flags.forEach(f => {
+    const statusBg = f.status === 'active' ? '#dcfce7' : '#fef3c7';
+    const statusColor = f.status === 'active' ? '#166534' : '#92400e';
+    container.innerHTML += `
+      <div class='mgmt-flagged-card' style='border:1px solid #e5e7eb;border-radius:14px;padding:16px 18px;background:#fff;cursor:pointer' onclick="viewSessionAPI('${escapeHtml(f.session_id)}')">
+        <div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px'>
+          <h4 style='margin:0;font-size:14px;color:#1e293b'><i class='fa fa-flag' style='color:#f59e0b;margin-right:6px'></i>${escapeHtml((f.session_id||'').substring(0,16))}…</h4>
+          <span style='background:${statusBg};color:${statusColor};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600'>${escapeHtml(f.status)}</span>
+        </div>
+        ${f.note ? `<p style='color:#64748b;font-size:13px;margin:0 0 6px'>📝 ${escapeHtml(f.note)}</p>` : ''}
+        <p style='color:#94a3b8;font-size:12px;margin:0'>${f.message_count || 0} messages · Flagged: ${formatTime(f.flagged_at)}</p>
+      </div>`;
+  });
+  const totalPages = Math.max(1, Math.ceil((data.total||0) / 10));
+  document.getElementById('flagPrevBtn').disabled = flagPage <= 1;
+  document.getElementById('flagNextBtn').disabled = flagPage >= totalPages;
+  document.getElementById('flagPageInfo').textContent = `Page ${flagPage} of ${totalPages}`;
+}
+
+window.renderFlagged = loadFlaggedSessions;
+window.changeFlagPage = function(dir){
+  flagPage += dir;
+  if(flagPage < 1) flagPage = 1;
+  loadFlaggedSessions();
+};
+
+// ===== STAFF PERFORMANCE TAB =====
+let perfPage = 1;
+const perfPageSize = 10;
+
+async function loadStaffRatings(){
+  const days = document.getElementById('perfDays')?.value || 30;
+  const staffFilter = document.getElementById('perfStaff')?.value || '';
+  try {
+    const resp = await fetch('/admin/api/staff-ratings?days=' + days, { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    if(!Array.isArray(data)) return;
+    // Populate staff filter
+    const sel = document.getElementById('perfStaff');
+    if(sel){
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All Staff</option>';
+      data.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.staff_username;
+        o.textContent = s.staff_username;
+        sel.appendChild(o);
+      });
+      sel.value = cur;
+    }
+    renderPerformanceFromAPI(data, staffFilter);
+  } catch(e) { console.error('Failed to load staff ratings', e); }
+}
+
+function renderPerformanceFromAPI(data, staffFilter){
+  const filtered = staffFilter ? data.filter(s => s.staff_username === staffFilter) : data;
+  const total = filtered.reduce((a,s) => a + (s.total||0), 0);
+  const sat = filtered.reduce((a,s) => a + (s.satisfied||0), 0);
+  const unsat = filtered.reduce((a,s) => a + (s.unsatisfied||0), 0);
+  const satPct = total ? Math.round(sat/total*100) : 0;
+  const summaryEl = document.getElementById('perfSummaryCards');
+  if(summaryEl) summaryEl.innerHTML = `
+    <div class='perf-summary-card'><div class='perf-summary-icon' style='background:#eff6ff'><i class='fa fa-comments' style='color:#2563eb'></i></div><div><div class='perf-summary-num'>${total}</div><div class='perf-summary-label'>Total Chats</div></div></div>
+    <div class='perf-summary-card'><div class='perf-summary-icon' style='background:#dcfce7'><i class='fa fa-face-smile' style='color:#16a34a'></i></div><div><div class='perf-summary-num' style='color:#16a34a'>${sat}</div><div class='perf-summary-label'>Satisfied</div></div></div>
+    <div class='perf-summary-card'><div class='perf-summary-icon' style='background:#fee2e2'><i class='fa fa-face-frown' style='color:#dc2626'></i></div><div><div class='perf-summary-num' style='color:#dc2626'>${unsat}</div><div class='perf-summary-label'>Unsatisfied</div></div></div>
+    <div class='perf-summary-card'><div class='perf-summary-icon' style='background:#fef3c7'><i class='fa fa-star' style='color:#f59e0b'></i></div><div><div class='perf-summary-num' style='color:#f59e0b'>${satPct}%</div><div class='perf-summary-label'>Satisfaction Rate</div></div></div>`;
+  const ratingCards = document.getElementById('perfRatingCards');
+  if(!ratingCards) return;
+  ratingCards.innerHTML = '';
+  if(!filtered.length){
+    ratingCards.style.display = 'block';
+    ratingCards.innerHTML = `<p style='color:#64748b;font-size:13px'>No data for selected range.</p>`;
+    return;
+  }
+  ratingCards.style.display = '';
+  filtered.forEach((s, idx) => {
+    const avgScore = s.avg_score || 0;
+    const scoreColor = avgScore >= 3 ? '#16a34a' : avgScore >= 2 ? '#d97706' : '#dc2626';
+    const accentColor = scoreColor;
+    const satWidth = s.total ? Math.round((s.satisfied||0)/s.total*100) : 0;
+    const unsatWidth = s.total ? Math.round((s.unsatisfied||0)/s.total*100) : 0;
+    ratingCards.innerHTML += `
+      <div class='perf-rating-card'>
+        <div class='prc-name'><div style='width:34px;height:34px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center'><i class='fa fa-user-tie' style='color:#2563eb;font-size:14px'></i></div>${escapeHtml(s.staff_username)}</div>
+        <div class='prc-score-row'><div class='prc-score' style='color:${scoreColor}'>${avgScore ? avgScore.toFixed(1) : '—'}</div><div class='prc-score-max'>/ 4.0</div></div>
+        <div class='prc-bar-wrap'><div class='prc-bar-label'><span>😄 Satisfied</span><span>${s.satisfied||0}/${s.total||0}</span></div><div class='prc-bar-track'><div class='prc-bar-fill' style='width:${satWidth}%;background:#16a34a'></div></div></div>
+        <div class='prc-bar-wrap'><div class='prc-bar-label'><span>😞 Unsatisfied</span><span>${s.unsatisfied||0}/${s.total||0}</span></div><div class='prc-bar-track'><div class='prc-bar-fill' style='width:${unsatWidth}%;background:#dc2626'></div></div></div>
+        <div class='prc-stats'><span class='perf-stat-chip perf-stat-sat'>😄 ${s.satisfied||0}</span><span class='perf-stat-chip perf-stat-unsat'>😞 ${s.unsatisfied||0}</span><span class='perf-stat-chip perf-stat-none'>— ${s.none||0}</span></div>
+      </div>`;
+  });
+}
+
+function renderPerformance(){ loadStaffRatings(); loadLiveChatHistory(); }
+
+// Live Chat History
+let lchPage = 1;
+let _lchData = [];
+
+async function loadLiveChatHistory(){
+  const days = document.getElementById('perfDays')?.value || 30;
+  const staffFilter = document.getElementById('perfStaff')?.value || '';
+  const params = new URLSearchParams();
+  params.set('page', lchPage);
+  params.set('page_size', perfPageSize);
+  params.set('days', days);
+  if(staffFilter) params.set('staff', staffFilter);
+  try {
+    const resp = await fetch('/admin/api/live-chat-history?' + params.toString(), { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    _lchData = data.sessions || [];
+    renderPerfTable(_lchData);
+    const totalPages = Math.max(1, Math.ceil((data.total||0) / perfPageSize));
+    document.getElementById('perfPrevBtn').disabled = lchPage <= 1;
+    document.getElementById('perfNextBtn').disabled = lchPage >= totalPages;
+    document.getElementById('perfPageInfo').textContent = `Page ${lchPage} of ${totalPages}`;
+    const histCount = document.getElementById('perfHistoryCount');
+    if(histCount) histCount.textContent = `${data.total||0} record${data.total!==1?'s':''}`;
+  } catch(e) { console.error('Failed to load live chat history', e); }
+}
+
+function renderPerfTable(sessions){
+  const tbody = document.getElementById('perfHistoryBody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!sessions.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:28px;font-size:13px"><i class="fa fa-inbox" style="font-size:24px;color:#e2e8f0;display:block;margin-bottom:8px"></i>No records found.</td></tr>';
+    return;
+  }
+  sessions.forEach(r => {
+    const rating = r.rating;
+    let badge;
+    if(rating >= 3) badge = `<span class='rating-badge rating-pos'><i class='fa fa-face-smile' style='margin-right:4px'></i>Satisfied (${rating})</span>`;
+    else if(rating >= 1) badge = `<span class='rating-badge rating-neg'><i class='fa fa-face-frown' style='margin-right:4px'></i>Unsatisfied (${rating})</span>`;
+    else badge = `<span class='rating-badge rating-none'>— No rating</span>`;
+    const started = r.created_at ? new Date(r.created_at * 1000).toLocaleString() : '—';
+    const ended = r.ended_at ? new Date(r.ended_at * 1000).toLocaleString() : '—';
+    tbody.innerHTML += `<tr>
+      <td><i class='fa fa-user' style='color:#94a3b8;margin-right:6px;font-size:11px'></i>${escapeHtml(r.display_name || r.session_id?.substring(0,12) || '—')}</td>
+      <td><span style='display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500'><i class='fa fa-user-tie' style='font-size:10px'></i>${escapeHtml(r.handled_by||'—')}</span></td>
+      <td style='font-size:12px;color:#64748b'>${started}</td>
+      <td style='font-size:12px;color:#64748b'>${ended}</td>
+      <td style='text-align:center;font-weight:600'>${r.msg_count||0}</td>
+      <td>${badge}</td>
+      <td><button onclick='viewLCH("${escapeHtml(r.live_chat_id||'')}","${escapeHtml(r.handled_by||'')}","${escapeHtml(r.display_name||r.session_id?.substring(0,12)||'')}")' style='padding:7px 12px;font-size:12px;border-radius:8px'><i class='fa fa-eye'></i> View</button></td>
+    </tr>`;
+  });
+}
+
+window.changePerfPage = function(dir){
+  lchPage += dir;
+  if(lchPage < 1) lchPage = 1;
+  loadLiveChatHistory();
+};
+
+window.viewLCH = async function(liveChatId, handledBy, patronName){
+  if(!liveChatId) return;
+  document.getElementById('lchModalTitle').textContent = 'Live Chat Transcript';
+  document.getElementById('lchModalMeta').textContent = `${handledBy} · ${patronName}`;
+  const log = document.getElementById('lchModalLog');
+  log.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div>';
+  document.getElementById('lchModal').style.display = 'flex';
+  try {
+    const resp = await fetch('/admin/api/live-chat/' + encodeURIComponent(liveChatId) + '/messages', { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    log.innerHTML = '';
+    if(!data.messages || !data.messages.length){
+      log.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px">No messages recorded.</p>';
+      return;
+    }
+    data.messages.forEach(m => {
+      const isStaff = m.role === 'librarian';
+      log.innerHTML += `
+        <div style='display:flex;flex-direction:column;align-items:${isStaff?'flex-end':'flex-start'}'>
+          <span style='font-size:11px;color:#94a3b8;margin-bottom:3px'>${isStaff?'👤 '+escapeHtml(handledBy||'Librarian'):'👤 Patron'} · ${formatTime(m.timestamp)}</span>
+          <div style='max-width:80%;padding:12px 16px;border-radius:${isStaff?'18px 4px 18px 18px':'4px 18px 18px 18px'};background:${isStaff?'#2563eb':'#f1f5f9'};color:${isStaff?'#fff':'#1e293b'};font-size:14px;line-height:1.6'>${escapeHtml(m.content)}</div>
+        </div>`;
+    });
+  } catch(e) {
+    log.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px">Failed to load messages.</p>';
+  }
+};
+
+// ===== LIVE CHAT / HANDOFF TAB =====
+let activeHandoffSid = null;
+let handoffPollTimer = null;
+
+async function loadHandoffQueue(){
+  try {
+    const resp = await fetch('/admin/api/handoff-sessions?page_size=50', { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    const sessions = data.sessions || [];
+    renderLiveQueue(sessions);
+    // Update badge
+    const count = sessions.length;
+    const liveLink = document.querySelector('.menu a[data-page="live"]');
+    if(liveLink){
+      let badge = liveLink.querySelector('.live-badge');
+      if(count > 0){
+        if(!badge){ badge = document.createElement('span'); badge.className = 'live-badge'; badge.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;margin-left:6px'; liveLink.appendChild(badge); }
+        badge.textContent = count;
+      } else if(badge) badge.remove();
+    }
+    // Update queue count badges in live page
+    const queueCount = document.getElementById('liveQueueCount');
+    const activeCount = document.getElementById('liveActiveCount');
+    const liveBadge = document.getElementById('liveBadge');
+    const waiting = sessions.filter(s => !s.staff_username).length;
+    const active = sessions.filter(s => s.staff_username).length;
+    if(queueCount) queueCount.textContent = waiting;
+    if(activeCount) activeCount.textContent = active;
+    if(liveBadge) liveBadge.textContent = waiting + ' waiting';
+    // Check if active session left
+    if(activeHandoffSid){
+      const stillInQueue = sessions.some(s => s.live_chat_id === activeHandoffSid);
+      if(!stillInQueue){
+        stopHandoffPoll();
+        const header = document.getElementById('liveChatHeader');
+        if(header){ const title = header.querySelector('#liveChatTitle'); if(title) title.textContent = '⚠️ Patron has left the chat'; }
+        const inputArea = document.getElementById('liveChatInputArea');
+        if(inputArea) inputArea.style.display = 'none';
+        activeHandoffSid = null;
+      }
+    }
+  } catch(e) { console.error('Failed to load handoff queue', e); }
+}
+
+function renderLiveQueue(sessions){
+  const list = document.getElementById('liveQueueList');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!sessions.length){
+    list.innerHTML = `<div style='text-align:center;padding:24px;color:#94a3b8;font-size:13px'><i class='fa fa-check-circle' style='font-size:28px;color:#bbf7d0;display:block;margin-bottom:8px'></i>No patrons in queue</div>`;
+    return;
+  }
+  const me = sessionStorage.getItem('admin_username') || 'admin';
+  sessions.forEach(s => {
+    const isActive = s.live_chat_id === activeHandoffSid;
+    const claimedBy = s.staff_username;
+    const claimedByMe = claimedBy && claimedBy === me;
+    const claimedByOther = claimedBy && claimedBy !== me;
+    let claimTag = '';
+    if(claimedBy){
+      claimTag = claimedByMe
+        ? `<span style='background:#dcfce7;color:#166534;font-size:10px;border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:500'>You</span>`
+        : `<span style='background:#fef3c7;color:#92400e;font-size:10px;border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:500'>${escapeHtml(claimedBy)}</span>`;
+    } else {
+      claimTag = `<span style='background:#eff6ff;color:#2563eb;font-size:10px;border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:500'>Open</span>`;
+    }
+    const div = document.createElement('div');
+    div.className = 'live-queue-item' + (isActive ? ' active' : '');
+    div.innerHTML = `
+      <div class='lq-name'><i class='fa fa-user' style='color:#2563eb;margin-right:6px;font-size:11px'></i>${escapeHtml(s.display_name || s.session_id?.substring(0,16) || 'Patron')}${claimTag}</div>
+      <div class='lq-meta'><i class='fa fa-clock' style='margin-right:4px'></i>${formatTime(s.last_activity)}</div>
+      <div class='lq-meta' style='margin-top:3px'>${s.message_count||0} messages</div>
+      <span class='lq-status ${claimedBy?"lq-active":"lq-waiting"}'>${claimedBy?'● Active':'● Waiting'}</span>`;
+    div.addEventListener('click', () => openHandoffChat(s.live_chat_id, s.session_id, claimedBy));
+    list.appendChild(div);
+  });
+}
+
+async function openHandoffChat(liveChatId, parentSid, claimedBy){
+  activeHandoffSid = liveChatId;
+  const header = document.getElementById('liveChatHeader');
+  const title = document.getElementById('liveChatTitle');
+  const meta = document.getElementById('liveChatMeta');
+  const actions = document.getElementById('liveChatActions');
+  const inputArea = document.getElementById('liveChatInputArea');
+  if(title) title.textContent = 'Session: ' + (parentSid||'').substring(0,16) + '…';
+  if(meta) meta.textContent = claimedBy ? `Handled by ${claimedBy} (read-only)` : 'Waiting for librarian (read-only)';
+  if(actions){ actions.style.display = 'flex'; actions.innerHTML = `<button onclick='endHandoffAdmin("${escapeHtml(liveChatId)}")' style='background:#ef4444;font-size:12px;padding:7px 14px;border-radius:10px'><i class='fa fa-phone-slash'></i> Force End</button>`; }
+  if(inputArea) inputArea.style.display = 'none';
+  const msgs = document.getElementById('liveChatMessages');
+  if(msgs) msgs.innerHTML = '';
+  await pollHandoffMessages();
+  startHandoffPoll();
+  renderLiveQueue([]); // will be refreshed by loadHandoffQueue
+  loadHandoffQueue();
+}
+
+async function pollHandoffMessages(){
+  if(!activeHandoffSid) return;
+  try {
+    const resp = await fetch('/admin/api/live-chat/' + encodeURIComponent(activeHandoffSid) + '/messages', { headers: { 'X-Admin-Key': getKey() } });
+    const data = await resp.json();
+    if(data.messages) renderLiveMessages(data.messages);
+    if(data.status === 'ended'){
+      stopHandoffPoll();
+      const title = document.getElementById('liveChatTitle');
+      if(title) title.textContent = '⚠️ Live chat has ended';
+      const inputArea = document.getElementById('liveChatInputArea');
+      if(inputArea) inputArea.style.display = 'none';
+      loadHandoffQueue();
+    }
+  } catch(e) { console.error('Failed to poll handoff messages', e); }
+}
+
+function renderLiveMessages(messages){
+  const container = document.getElementById('liveChatMessages');
+  if(!container) return;
+  container.innerHTML = '';
+  messages.forEach(m => {
+    const div = document.createElement('div');
+    const cls = m.role === 'librarian' ? 'staff' : m.role === 'assistant' ? 'bot' : 'patron';
+    const label = m.role === 'librarian' ? '👤 Librarian' : m.role === 'assistant' ? '🤖 LLORA' : '👤 Patron';
+    div.className = 'live-msg ' + cls;
+    div.innerHTML = `<div class='live-msg-label'>${label} · ${formatTime(m.timestamp)}</div><div class='live-msg-bubble'>${escapeHtml(m.content)}</div>`;
+    container.appendChild(div);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function startHandoffPoll(){
+  stopHandoffPoll();
+  handoffPollTimer = setInterval(pollHandoffMessages, 3000);
+}
+function stopHandoffPoll(){
+  if(handoffPollTimer){ clearInterval(handoffPollTimer); handoffPollTimer = null; }
+}
+
+window.endHandoffAdmin = function(liveChatId){
+  openConfirmModal({
+    icon:'fa-phone-slash', iconBg:'#fef2f2', iconColor:'#ef4444',
+    title:'Force End Chat',
+    message:'Force-end this chat? The patron will be returned to the bot.',
+    confirmText:'End Chat', confirmBg:'#ef4444',
+    onConfirm: async function(){
+      try {
+        await fetch('/admin/api/live-chat/' + encodeURIComponent(liveChatId) + '/end', {
+          method: 'POST', headers: { 'X-Admin-Key': getKey() }
+        });
+        stopHandoffPoll();
+        activeHandoffSid = null;
+        const msgs = document.getElementById('liveChatMessages');
+        if(msgs) msgs.innerHTML = `<div style='text-align:center;margin:auto;color:#94a3b8'><i class='fa fa-comments' style='font-size:40px;color:#e2e8f0;display:block;margin-bottom:12px'></i><p style='font-weight:500;color:#64748b'>No session selected</p><p style='font-size:13px'>Pick a patron from the queue to start monitoring.</p></div>`;
+        const title = document.getElementById('liveChatTitle');
+        if(title) title.textContent = 'Select a session from the queue';
+        const meta = document.getElementById('liveChatMeta');
+        if(meta) meta.textContent = 'No active session';
+        const actions = document.getElementById('liveChatActions');
+        if(actions) actions.innerHTML = '';
+        const inputArea = document.getElementById('liveChatInputArea');
+        if(inputArea) inputArea.style.display = 'none';
+        await loadHandoffQueue();
+        openToast('Chat ended');
+      } catch(e) { openToast('Failed to end chat', true); }
+    }
+  });
+};
+
+// Wire send button for live chat input
+document.addEventListener('DOMContentLoaded', function(){
+  const sendBtn = document.getElementById('liveChatSendBtn');
+  if(sendBtn) sendBtn.addEventListener('click', sendLiveMessage);
+  const input = document.getElementById('liveChatInput');
+  if(input) input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendLiveMessage(); }
+  });
+});
+
+window.sendLiveMessage = async function(){
+  if(!activeHandoffSid) return;
+  const input = document.getElementById('liveChatInput');
+  if(!input) return;
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  try {
+    await fetch('/admin/api/live-chat/' + encodeURIComponent(activeHandoffSid) + '/reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getKey() },
+      body: JSON.stringify({ message: text, sender_name: sessionStorage.getItem('admin_username') || 'admin' })
+    });
+    await pollHandoffMessages();
+  } catch(e) { openToast('Failed to send message', true); }
+};
+
+// ===== ANALYTICS =====
+async function loadAnalytics(){
+  const days = document.getElementById('analyticsDays')?.value || 30;
+  const data = await apiFetch('/admin/api/analytics?days=' + days);
+  if(!data) return;
+  // Update analytics stat cards if they exist
+  const totalMsgs = document.getElementById('analyticsTotalMsgs');
+  const avgMsgs = document.getElementById('analyticsAvgMsgs');
+  const failed = document.getElementById('analyticsFailed');
+  const failRate = document.getElementById('analyticsFailRate');
+  if(totalMsgs) totalMsgs.textContent = data.total_user_messages || 0;
+  if(avgMsgs) avgMsgs.textContent = data.avg_messages_per_session || 0;
+  if(failed) failed.textContent = data.failed_queries || 0;
+  if(failRate){
+    const rate = data.total_user_messages > 0
+      ? ((data.failed_queries / data.total_user_messages) * 100).toFixed(1) + '%'
+      : '0%';
+    failRate.textContent = rate;
+  }
+}
+
+// ===== SHARED CONFIRM MODAL =====
+let _confirmCallback = () => {};
+function openConfirmModal({icon, iconBg, iconColor, title, message, confirmText, confirmBg, onConfirm}){
+  document.getElementById('confirmIcon').style.background = iconBg;
+  document.getElementById('confirmIconI').className = 'fa ' + icon;
+  document.getElementById('confirmIconI').style.color = iconColor;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').innerHTML = message;
+  const btn = document.getElementById('confirmOkBtn');
+  btn.textContent = confirmText;
+  btn.style.background = confirmBg;
+  _confirmCallback = () => { closeConfirmModal(); onConfirm(); };
+  document.getElementById('confirmModal').style.display = 'flex';
+}
+window.closeConfirmModal = () => document.getElementById('confirmModal').style.display = 'none';
+
+// ===== STAFF MODAL =====
+function openStaffModal(i, data){
+  document.getElementById('staffModalIndex').value = i;
+  document.getElementById('staffModalTitle').textContent = i === -1 ? 'Add Contact' : 'Edit Contact';
+  document.getElementById('staffModalSaveBtn').innerHTML = i === -1 ? '<i class="fa fa-plus"></i> Add' : '<i class="fa fa-save"></i> Save';
+  document.getElementById('staffModalName').value = data.name || '';
+  document.getElementById('staffModalEmail').value = data.email || '';
+  document.getElementById('staffModalStatus').value = (data.is_active !== undefined ? (data.is_active ? 'Active' : 'Inactive') : (data.status || 'Active'));
+  document.getElementById('staffModal').style.display = 'flex';
+}
+window.closeStaffModal = () => document.getElementById('staffModal').style.display = 'none';
+window.saveStaffModal = async function(){
+  const i = parseInt(document.getElementById('staffModalIndex').value);
+  const name = document.getElementById('staffModalName').value.trim();
+  const email = document.getElementById('staffModalEmail').value.trim();
+  const status = document.getElementById('staffModalStatus').value;
+  if(!name || !email){ openToast('Name and email are required', true); return; }
+  const isActive = status === 'Active';
+  try {
+    if(i === -1){
+      const resp = await fetch('/admin/api/staff-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getKey() },
+        body: JSON.stringify({ name, email, is_active: isActive })
+      });
+      if(!resp.ok){ const err = await resp.json().catch(()=>({})); openToast(err.error||'Add failed', true); return; }
+      openToast('Contact added');
+    } else {
+      const id = staff[i]?.id;
+      if(id){
+        const resp = await fetch('/admin/api/staff-contacts/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getKey() },
+          body: JSON.stringify({ name, email, is_active: isActive })
+        });
+        if(!resp.ok){ const err = await resp.json().catch(()=>({})); openToast(err.error||'Update failed', true); return; }
+      }
+      openToast('Contact updated');
+    }
+    closeStaffModal();
+    await loadContacts();
+  } catch(e) { openToast('Network error', true); }
+};
+
+// ===== TOAST =====
+let _toastTimer;
+function openToast(msg, isError=false){
+  const t = document.getElementById('adminToast');
+  t.textContent = msg;
+  t.className = isError ? 'error' : '';
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ===== SESSION SEARCH WIRING (for sessions page) =====
+// The sessions page in admin.html uses different IDs — wire them up
+document.addEventListener('DOMContentLoaded', function(){
+  // Sessions page search
+  const sessionSearchInput = document.getElementById('sessionSearch');
+  const sessionSearchBtn = document.getElementById('sessionSearchBtn');
+  if(sessionSearchBtn) sessionSearchBtn.onclick = () => { sessionsPage = 1; loadSessions(); };
+  if(sessionSearchInput) sessionSearchInput.addEventListener('keydown', e => { if(e.key==='Enter'){ sessionsPage=1; loadSessions(); } });
+  // AI settings
+  document.querySelectorAll('.aiField').forEach(el => {
+    el.addEventListener('input', enableAISave);
+    el.addEventListener('change', enableAISave);
+  });
+  // FAQ search
+  const faqSearch = document.getElementById('faqSearch');
+  if(faqSearch) faqSearch.addEventListener('input', renderFAQ);
+  // Performance refresh
+  const perfRefreshBtn = document.querySelector('button[onclick="renderPerformance()"]');
+  if(perfRefreshBtn) perfRefreshBtn.onclick = renderPerformance;
+  // Management refresh
+  const flagRefreshBtn = document.querySelector('button[onclick="renderFlagged()"]');
+  if(flagRefreshBtn) flagRefreshBtn.onclick = loadFlaggedSessions;
+});
+
+</script>
+</body>
+</html>
