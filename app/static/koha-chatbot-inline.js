@@ -263,7 +263,7 @@
         // Update the text node that follows the avatar image
         hdr.childNodes.forEach(function(n) {
           if (n.nodeType === 3 && n.textContent.trim()) {
-            n.textContent = " " + name + " — Library Assistant";
+            n.textContent = " " + name;
           }
         });
       }
