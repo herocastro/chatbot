@@ -148,7 +148,7 @@
   wrap.setAttribute("role", "dialog");
   wrap.setAttribute("aria-label", "Library chat assistant");
   wrap.innerHTML =
-    '<div id="lc-hdr"><img id="lc-hdr-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" /> LLORA — Library Assistant<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
+    '<div id="lc-hdr"><img id="lc-hdr-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" /> LLORA<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
     '<div id="lc-msgs" role="log" aria-live="polite">' +
     '<div class="lc-w">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
     '<div class="lc-faqs" id="lc-faqs-init">' +
