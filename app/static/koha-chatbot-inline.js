@@ -52,10 +52,6 @@
     "gap:10px;flex-shrink:0}" +
     "#lc-hdr-avatar{width:38px;height:38px;border-radius:50%;border:2px solid #D4A017;" +
     "object-fit:cover;flex-shrink:0;background:#0a3f2e}" +
-    "#lc-new{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;" +
-    "border-radius:14px;padding:4px 12px;font-size:.75rem;cursor:pointer;" +
-    "margin-left:auto;transition:background .15s}" +
-    "#lc-new:hover{background:rgba(255,255,255,.15)}" +
     "#lc-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;" +
     "flex-direction:column;gap:8px;background:#fff}" +
     ".lc-m{max-width:80%;padding:10px 14px;border-radius:16px;" +
@@ -120,7 +116,7 @@
     ".lc-pager-info{font-size:.75rem;color:#888}" +
     "#lc-librarian{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;" +
     "border-radius:14px;padding:4px 10px;font-size:.72rem;cursor:pointer;" +
-    "transition:background .15s;white-space:nowrap}" +
+    "transition:background .15s;white-space:nowrap;margin-left:auto}" +
     "#lc-librarian:hover:not(:disabled){background:rgba(255,255,255,.15)}" +
     "#lc-librarian:disabled{opacity:.45;cursor:not-allowed;border-color:rgba(255,255,255,.2)}" +
     "@media(max-width:480px){#lc-wrap{bottom:0;right:0;width:100vw;" +
@@ -148,7 +144,7 @@
   wrap.setAttribute("role", "dialog");
   wrap.setAttribute("aria-label", "Library chat assistant");
   wrap.innerHTML =
-    '<div id="lc-hdr"><img id="lc-hdr-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" /> LLORA<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button><button id="lc-new" aria-label="Start new chat">New Chat</button></div>' +
+    '<div id="lc-hdr"><img id="lc-hdr-avatar" src="' + AVATAR_URL + '" alt="LLORA avatar" /> LLORA<button id="lc-librarian" aria-label="Talk to a librarian">&#128172; Librarian</button></div>' +
     '<div id="lc-msgs" role="log" aria-live="polite">' +
     '<div class="lc-w">Hello, I\'m LLORA (Lorma Library Online Research Assistant), your virtual assistant. I\'m here to provide the assistance you need. I\'ll be happy to serve you.</div>' +
     '<div class="lc-faqs" id="lc-faqs-init">' +
@@ -871,27 +867,6 @@
     checkLibrarianAvailability();
     saveState();
   }
-
-  document.getElementById("lc-new").addEventListener("click", function () {
-    // Close the old session on the server
-    if (sid) {
-      var oldSid = sid;
-      fetch(CHATBOT_API + "/api/close-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "", session_id: oldSid })
-      }).catch(function () {
-        // Fallback to sendBeacon if fetch fails
-        var blob = new Blob(
-          [JSON.stringify({ message: "", session_id: oldSid })],
-          { type: "application/json" }
-        );
-        navigator.sendBeacon(CHATBOT_API + "/api/close-session", blob);
-      });
-    }
-    resetToNewChat();
-    inp.focus();
-  });
 
   // Send
   function send() {
