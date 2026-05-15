@@ -1290,6 +1290,10 @@ loginForm.addEventListener('submit', async function(e){
   const username=document.getElementById('login-username').value.trim();
   const password=document.getElementById('login-password').value;
   if(!username||!password){ loginError.textContent='Please enter both username and password.'; loginError.classList.remove('hidden'); return; }
+  const btn=loginForm.querySelector('.btn-login');
+  const origHtml=btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Signing in…';
   try {
     const resp=await fetch('/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const data=await resp.json().catch(()=>({}));
@@ -1305,8 +1309,15 @@ loginForm.addEventListener('submit', async function(e){
     } else {
       loginError.textContent=data.error||'Invalid username or password.';
       loginError.classList.remove('hidden');
+      btn.disabled=false;
+      btn.innerHTML=origHtml;
     }
-  } catch(err){ loginError.textContent='Network error: '+err.message; loginError.classList.remove('hidden'); }
+  } catch(err){
+    loginError.textContent='Network error: '+err.message;
+    loginError.classList.remove('hidden');
+    btn.disabled=false;
+    btn.innerHTML=origHtml;
+  }
 });
 
 // Toggle password visibility
@@ -1333,10 +1344,11 @@ document.getElementById('darkModeToggle').addEventListener('click',function(){
   const key=sessionStorage.getItem('admin_api_key');
   if(!key) return;
   apiKey=key;
-  showLoading();
+  // Show a loading state on the login button while verifying the stored session
+  const btn=document.querySelector('.btn-login');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Verifying session…'; }
   fetch('/admin/api/verify',{headers:{'X-Admin-Key':key}})
     .then(function(r){
-      hideLoading();
       if(r.status===401){ doLogout(); return; }
       loginPage.style.display='none';
       document.body.classList.remove('login-active');
@@ -1344,7 +1356,10 @@ document.getElementById('darkModeToggle').addEventListener('click',function(){
       document.body.classList.add('admin-active');
       initAdmin();
     })
-    .catch(function(){ hideLoading(); doLogout(); });
+    .catch(function(){
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-arrow-right-to-bracket"></i>&nbsp; Sign In'; }
+      doLogout();
+    });
 })();
 
 function doLogout(){
