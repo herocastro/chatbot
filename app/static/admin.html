@@ -635,7 +635,6 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
 <div class="menu">
   <a class="active" data-page="dashboard"><i class="fa fa-chart-line"></i>Dashboard</a>
   <a data-page="sessions"><i class="fa fa-layer-group"></i>Sessions</a>
-  <a data-page="quality"><i class="fa fa-magnifying-glass-chart"></i>Quality</a>
   <div style="margin:8px 16px;border-top:1px solid #e5e7eb;opacity:.5"></div>
   <a data-page="library"><i class="fa fa-book"></i>Library Info</a>
   <a data-page="ai"><i class="fa fa-robot"></i>AI Settings</a>
@@ -789,36 +788,6 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
     </div>
   </div>
 </div><!-- end #sessions -->
-<!-- ===== QUALITY PAGE ===== -->
-<div class="page" id="quality">
-  <div class="page-banner" style="background:linear-gradient(135deg,#6d28d9,#7c3aed)">
-    <div>
-      <h2 class="pb-title"><i class="fa fa-magnifying-glass-chart"></i> Quality</h2>
-      <p class="pb-desc">Review unanswered queries and identify gaps in the chatbot's knowledge.</p>
-    </div>
-  </div>
-  <div class="analytics-controls">
-    <label for="quality-days">Time range:</label>
-    <select id="quality-days" aria-label="Quality time range">
-      <option value="7">Last 7 days</option>
-      <option value="30" selected>Last 30 days</option>
-      <option value="90">Last 90 days</option>
-    </select>
-    <button id="quality-refresh-btn" type="button"><i class="fa fa-rotate-right"></i> Refresh</button>
-  </div>
-  <div class="quality-grid">
-    <section class="analytics-card" aria-label="Unanswered queries">
-      <h3><i class="fa fa-circle-question" style="margin-right:8px;color:#7c3aed"></i>Unanswered Queries</h3>
-      <p class="quality-desc">Messages the bot couldn't handle — classified as unclear or too vague.</p>
-      <div id="unanswered-list" class="quality-list"></div>
-      <nav class="pagination" aria-label="Unanswered queries pagination">
-        <button id="uq-prev-btn" type="button" disabled>← Prev</button>
-        <span id="uq-page-info">Page 1</span>
-        <button id="uq-next-btn" type="button" disabled>Next →</button>
-      </nav>
-    </section>
-  </div>
-</div><!-- end #quality -->
 <!-- ===== LIBRARY INFO PAGE ===== -->
 <div class="page" id="library">
   <div class="page-banner" style="background:linear-gradient(135deg,#047857,#059669)">
@@ -1516,7 +1485,6 @@ function initAdmin(){
     const pg=document.getElementById(x.dataset.page);
     if(pg) pg.classList.add('active');
     if(x.dataset.page==='sessions') loadSessions();
-    if(x.dataset.page==='quality') loadQuality();
     if(x.dataset.page==='library') loadLibraryInfo();
     if(x.dataset.page==='ai') loadAiSettings();
     if(x.dataset.page==='hours') loadLibraryHours();
@@ -1807,39 +1775,6 @@ function renderIntentChart(breakdown){ renderBarChart(document.getElementById('i
 function renderHourlyChart(hourly){ renderLineChart(document.getElementById('hourly-chart'),hourly.map(h=>String(h.hour).padStart(2,'0')),hourly.map(h=>h.count),'#2563eb'); }
 function renderDailyChart(daily){ renderLineChart(document.getElementById('daily-chart'),daily.map(d=>d.day.substring(0,3)),daily.map(d=>d.count),'#7c3aed'); }
 
-// ===== QUALITY TAB =====
-let uqPage=1;
-document.getElementById('quality-refresh-btn').addEventListener('click',loadQuality);
-document.getElementById('quality-days').addEventListener('change',function(){ uqPage=1; loadQuality(); });
-document.getElementById('uq-prev-btn').addEventListener('click',function(){ if(uqPage>1){ uqPage--; loadUnanswered(); } });
-document.getElementById('uq-next-btn').addEventListener('click',function(){ uqPage++; loadUnanswered(); });
-
-async function loadQuality(){ await loadUnanswered(); }
-
-async function loadUnanswered(){
-  const days=document.getElementById('quality-days').value;
-  const params=new URLSearchParams(); params.set('days',days); params.set('page',uqPage); params.set('page_size','10');
-  const data=await apiFetch('/admin/api/quality/unanswered?'+params.toString());
-  if(!data) return;
-  const container=document.getElementById('unanswered-list');
-  container.innerHTML='';
-  if(!data.queries||!data.queries.length){
-    container.innerHTML='<div class="quality-empty">No unanswered queries found. The bot is handling everything well.</div>';
-    document.getElementById('uq-prev-btn').disabled=true; document.getElementById('uq-next-btn').disabled=true;
-    document.getElementById('uq-page-info').textContent='Page 1'; return;
-  }
-  data.queries.forEach(function(q){
-    var item=document.createElement('div'); item.className='quality-item';
-    item.innerHTML='<div class="qi-meta"><span>'+formatTime(q.timestamp)+'</span><span class="qi-intent">'+escapeHtml(q.intent)+'</span></div>'+
-      '<div class="qi-user">'+escapeHtml(q.content)+'</div>'+
-      '<div style="font-size:.78em;color:#94a3b8;margin-top:4px">Session: '+escapeHtml(q.session_id.substring(0,8))+'…</div>';
-    container.appendChild(item);
-  });
-  const totalPages=Math.max(1,Math.ceil(data.total/10));
-  document.getElementById('uq-prev-btn').disabled=uqPage<=1;
-  document.getElementById('uq-next-btn').disabled=uqPage>=totalPages;
-  document.getElementById('uq-page-info').textContent='Page '+uqPage+' of '+totalPages;
-}
 // ===== LIBRARY INFO / FAQ EDITOR =====
 var _faqData=[], _editingIndex=-1;
 
