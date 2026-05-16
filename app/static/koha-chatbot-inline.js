@@ -251,19 +251,52 @@
     .then(function(d) {
       var name = d.name || "LLORA";
       var welcome = d.welcome_message || ("Hello, I'm " + name + " (Lorma Library Online Research Assistant), your virtual assistant. I'm here to provide the assistance you need. I'll be happy to serve you.");
+      var avatarUrl = d.avatar_url || "";
+      var primaryColor = d.primary_color || "#0E553F";
+
       // Replace LLORA placeholder in after-hours message with actual bot name
       AFTER_HOURS_MESSAGE = AFTER_HOURS_MESSAGE.replace("LLORA", name);
-      // Update header
+
+      // Apply brand color to header, user bubbles, send button, FAB, and borders
+      var styleEl = document.getElementById("lc-dynamic-style");
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "lc-dynamic-style";
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent =
+        "#lc-hdr{background:" + primaryColor + "}" +
+        "#lc-fab{background:" + primaryColor + ";border-color:" + primaryColor + "}" +
+        "#lc-fab:hover{background:" + primaryColor + ";filter:brightness(.85)}" +
+        ".lc-m.u{background:" + primaryColor + "}" +
+        "#lc-in:focus{border-color:" + primaryColor + "}" +
+        ".lc-faq{color:" + primaryColor + "}" +
+        ".lc-card:hover{border-color:" + primaryColor + "}" +
+        ".lc-card-btn{background:" + primaryColor + "!important}" +
+        ".lc-card-btn:hover{filter:brightness(.85)}" +
+        ".lc-pager-btn{color:" + primaryColor + "}" +
+        ".lc-pager-btn.active{background:" + primaryColor + ";border-color:" + primaryColor + "}" +
+        ".lc-img-link{color:" + primaryColor + "}";
+
+      // Update avatar in FAB and header
+      var fabAvatar = document.getElementById("lc-fab-avatar");
+      var hdrAvatar = document.getElementById("lc-hdr-avatar");
+      if (avatarUrl) {
+        if (fabAvatar) { fabAvatar.src = avatarUrl; fabAvatar.alt = name + " avatar"; }
+        if (hdrAvatar) { hdrAvatar.src = avatarUrl; hdrAvatar.alt = name + " avatar"; }
+      }
+
+      // Update header name text node
       var hdr = document.getElementById("lc-hdr");
       if (hdr) {
-        // Update the text node that follows the avatar image
         hdr.childNodes.forEach(function(n) {
           if (n.nodeType === 3 && n.textContent.trim()) {
             n.textContent = " " + name;
           }
         });
       }
-      // Always show normal welcome + FAQs regardless of library hours
+
+      // Update welcome bubble
       var wEl = msgs.querySelector(".lc-w");
       if (wEl) wEl.textContent = welcome;
     })
