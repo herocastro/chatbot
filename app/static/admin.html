@@ -832,7 +832,9 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
           <div style="flex:1;min-width:200px">
             <label class="ai-label" for="ai-avatar-url" style="font-size:.85em;margin-bottom:4px">Avatar Image URL</label>
             <input type="url" id="ai-avatar-url" class="ai-input" placeholder="https://example.com/avatar.png" aria-label="Avatar image URL" style="margin-bottom:8px">
-            <p class="ai-hint" style="margin-bottom:12px">Paste a direct image URL (PNG, JPG, SVG, or GIF). Leave blank to use the default robot icon.</p>
+            <p class="ai-hint" style="margin-bottom:8px">Paste a direct image URL, or upload a file below. Leave blank to use the default robot icon.</p>
+            <label class="ai-label" style="font-size:.85em;margin-bottom:4px">Or upload an image</label>
+            <input type="file" id="ai-avatar-file" accept="image/*" style="font-size:.82em;margin-bottom:12px;display:block">
             <label class="ai-label" style="font-size:.85em;margin-bottom:6px">Brand Color</label>
             <div class="ai-color-row">
               <button type="button" class="ai-color-swatch" data-color="#0E553F" style="background:#0E553F" title="Library Green" aria-label="Library Green"></button>
@@ -1979,13 +1981,19 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeDraw
 async function loadAiSettings(){
   const data=await apiFetch('/admin/api/ai-settings');
   if(!data) return;
-  document.getElementById('ai-name').value=data.name||'';
-  document.getElementById('ai-personality').value=data.personality||'';
-  document.getElementById('ai-limitations').value=data.limitations||'';
-  document.getElementById('ai-welcome').value=data.welcome_message||'';
-  document.getElementById('ai-avatar-url').value=data.avatar_url||'';
+  var nameEl=document.getElementById('ai-name');
+  var personalityEl=document.getElementById('ai-personality');
+  var limitationsEl=document.getElementById('ai-limitations');
+  var welcomeEl=document.getElementById('ai-welcome');
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  var colorEl=document.getElementById('ai-primary-color');
+  if(nameEl) nameEl.value=data.name||'';
+  if(personalityEl) personalityEl.value=data.personality||'';
+  if(limitationsEl) limitationsEl.value=data.limitations||'';
+  if(welcomeEl) welcomeEl.value=data.welcome_message||'';
+  if(avatarUrlEl){ avatarUrlEl.value=data.avatar_url||''; delete avatarUrlEl.dataset.dataUrl; }
   var color=data.primary_color||'#0E553F';
-  document.getElementById('ai-primary-color').value=color;
+  if(colorEl) colorEl.value=color;
   _syncColorSwatches(color);
   updateAiPreview();
 }
@@ -1995,59 +2003,97 @@ function _syncColorSwatches(color){
   });
 }
 function updateAiPreview(){
-  var name=document.getElementById('ai-name').value.trim()||'LLORA';
-  var welcome=document.getElementById('ai-welcome').value.trim();
+  var nameEl=document.getElementById('ai-name');
+  var welcomeEl=document.getElementById('ai-welcome');
+  var colorEl=document.getElementById('ai-primary-color');
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  if(!nameEl||!welcomeEl||!colorEl||!avatarUrlEl) return;
+  var name=nameEl.value.trim()||'LLORA';
+  var welcome=welcomeEl.value.trim();
   if(!welcome) welcome="Hello, I'm {name}, your virtual library assistant. How can I help you today?";
   var welcomeText=welcome.replace(/\{name\}/g,name);
-  document.getElementById('ai-preview-bubble').textContent=welcomeText;
+  var previewBubble=document.getElementById('ai-preview-bubble');
+  if(previewBubble) previewBubble.textContent=welcomeText;
   // Widget header preview
-  var color=document.getElementById('ai-primary-color').value||'#0E553F';
-  var avatarUrl=document.getElementById('ai-avatar-url').value.trim();
-  document.getElementById('ai-widget-preview-hdr').style.background=color;
-  document.getElementById('ai-widget-preview-name').textContent=name;
-  document.getElementById('ai-widget-preview-bubble').textContent=welcomeText;
+  var color=colorEl.value||'#0E553F';
+  var avatarUrl=avatarUrlEl.dataset.dataUrl||avatarUrlEl.value.trim();
+  var hdr=document.getElementById('ai-widget-preview-hdr');
+  if(hdr) hdr.style.background=color;
+  var nameSpan=document.getElementById('ai-widget-preview-name');
+  if(nameSpan) nameSpan.textContent=name;
+  var wBubble=document.getElementById('ai-widget-preview-bubble');
+  if(wBubble) wBubble.textContent=welcomeText;
   // Avatar preview (large)
   var previewWrap=document.getElementById('ai-avatar-preview-wrap');
   var previewImg=document.getElementById('ai-avatar-preview-img');
-  // Widget header avatar
   var hdrAvatar=document.getElementById('ai-widget-preview-avatar');
   if(avatarUrl){
-    previewImg.src=avatarUrl;
-    previewImg.style.display='block';
-    previewWrap.classList.remove('placeholder');
-    hdrAvatar.innerHTML='<img src="'+avatarUrl+'" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    if(previewImg){ previewImg.src=avatarUrl; previewImg.style.display='block'; }
+    if(previewWrap) previewWrap.classList.remove('placeholder');
+    if(hdrAvatar) hdrAvatar.innerHTML='<img src="'+avatarUrl+'" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
   } else {
-    previewImg.style.display='none';
-    previewWrap.classList.add('placeholder');
-    hdrAvatar.textContent='🤖';
+    if(previewImg) previewImg.style.display='none';
+    if(previewWrap) previewWrap.classList.add('placeholder');
+    if(hdrAvatar) hdrAvatar.textContent='🤖';
   }
 }
 // Color swatch clicks
 document.querySelectorAll('.ai-color-swatch').forEach(function(s){
   s.addEventListener('click',function(){
     var color=s.dataset.color;
-    document.getElementById('ai-primary-color').value=color;
+    var colorEl=document.getElementById('ai-primary-color');
+    if(colorEl) colorEl.value=color;
     _syncColorSwatches(color);
     updateAiPreview();
   });
 });
-['ai-name','ai-welcome','ai-avatar-url'].forEach(function(id){
-  document.getElementById(id).addEventListener('input',updateAiPreview);
-});
-document.getElementById('ai-primary-color').addEventListener('input',function(){
-  _syncColorSwatches(this.value);
-  updateAiPreview();
-});
+(function(){
+  var ids=['ai-name','ai-welcome','ai-avatar-url'];
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',updateAiPreview);
+  });
+  var colorEl=document.getElementById('ai-primary-color');
+  if(colorEl) colorEl.addEventListener('input',function(){
+    _syncColorSwatches(this.value);
+    updateAiPreview();
+  });
+  var avatarFileEl=document.getElementById('ai-avatar-file');
+  if(avatarFileEl) avatarFileEl.addEventListener('change',function(){
+    var file=this.files&&this.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var urlEl=document.getElementById('ai-avatar-url');
+      // Store as data URL in the URL field temporarily for preview
+      // We'll upload it on save
+      if(urlEl){ urlEl.value=''; urlEl.dataset.dataUrl=e.target.result; }
+      var previewWrap=document.getElementById('ai-avatar-preview-wrap');
+      var previewImg=document.getElementById('ai-avatar-preview-img');
+      if(previewImg){ previewImg.src=e.target.result; previewImg.style.display='block'; }
+      if(previewWrap) previewWrap.classList.remove('placeholder');
+      var hdrAvatar=document.getElementById('ai-widget-preview-avatar');
+      if(hdrAvatar) hdrAvatar.innerHTML='<img src="'+e.target.result+'" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    };
+    reader.readAsDataURL(file);
+  });
+})();
 
 document.getElementById('ai-save-btn').addEventListener('click',async function(){
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  var avatarVal=avatarUrlEl?(avatarUrlEl.dataset.dataUrl||avatarUrlEl.value.trim()):'';
   var payload={
-    name:document.getElementById('ai-name').value.trim(),
-    personality:document.getElementById('ai-personality').value.trim(),
-    limitations:document.getElementById('ai-limitations').value.trim(),
-    welcome_message:document.getElementById('ai-welcome').value.trim(),
-    avatar_url:document.getElementById('ai-avatar-url').value.trim(),
-    primary_color:document.getElementById('ai-primary-color').value.trim()
+    name:(document.getElementById('ai-name')||{}).value||'',
+    personality:(document.getElementById('ai-personality')||{}).value||'',
+    limitations:(document.getElementById('ai-limitations')||{}).value||'',
+    welcome_message:(document.getElementById('ai-welcome')||{}).value||'',
+    avatar_url:avatarVal,
+    primary_color:((document.getElementById('ai-primary-color')||{}).value||'#0E553F').trim()
   };
+  payload.name=payload.name.trim();
+  payload.personality=payload.personality.trim();
+  payload.limitations=payload.limitations.trim();
+  payload.welcome_message=payload.welcome_message.trim();
   var statusEl=document.getElementById('ai-save-status');
   if(!payload.name){ statusEl.textContent='✗ Name is required'; statusEl.style.color='#ef4444'; setTimeout(()=>statusEl.textContent='',3000); return; }
   try {
