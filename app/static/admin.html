@@ -658,30 +658,42 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
       <h2 class="pb-title">Welcome back, Admin <i class="fa fa-hand-wave"></i></h2>
       <p class="pb-desc">Live session health and usage analytics — all in one place.</p>
     </div>
-    <div class="pb-stat"><div class="pb-stat-num" id="dash-total">—</div><div class="pb-stat-label">Total Sessions</div></div>
   </div>
 
   <!-- Row 1: Session health stats -->
-  <section class="stats-panel" aria-label="Session statistics">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:.82em;color:#94a3b8"><i class="fa fa-circle" style="color:#16a34a;font-size:.6em;margin-right:5px"></i>Auto-refreshes every 5s &nbsp;·&nbsp; <span id="dash-last-updated">—</span></span>
+  </div>
+  <section class="stats-panel" style="grid-template-columns:repeat(6,1fr)" aria-label="Session statistics">
     <div class="stat-card" id="stat-card-total" style="border-top-color:#2563eb">
       <div class="stat-icon"><i class="fa fa-layer-group" style="color:#2563eb"></i></div>
       <div class="stat-value" id="stat-total">—</div>
       <div class="stat-label">Total Sessions</div>
     </div>
+    <div class="stat-card" id="stat-card-today" style="border-top-color:#0d9488">
+      <div class="stat-icon"><i class="fa fa-calendar-day" style="color:#0d9488"></i></div>
+      <div class="stat-value" id="stat-today">—</div>
+      <div class="stat-label">Today</div>
+    </div>
     <div class="stat-card" id="stat-card-active" style="border-top-color:#16a34a">
       <div class="stat-icon"><i class="fa fa-circle-dot" style="color:#16a34a"></i></div>
       <div class="stat-value" id="stat-active">—</div>
-      <div class="stat-label">Active Sessions</div>
+      <div class="stat-label">Active</div>
     </div>
     <div class="stat-card" id="stat-card-expired" style="border-top-color:#d97706">
       <div class="stat-icon"><i class="fa fa-clock" style="color:#d97706"></i></div>
       <div class="stat-value" id="stat-expired">—</div>
-      <div class="stat-label">Expired Sessions</div>
+      <div class="stat-label">Expired</div>
     </div>
     <div class="stat-card" id="stat-card-messages" style="border-top-color:#7c3aed">
       <div class="stat-icon"><i class="fa fa-message" style="color:#7c3aed"></i></div>
       <div class="stat-value" id="stat-messages">—</div>
       <div class="stat-label">Total Messages</div>
+    </div>
+    <div class="stat-card" id="stat-card-waiting" style="border-top-color:#e11d48;cursor:pointer" title="Click to go to Live Chat" onclick="document.querySelector('.menu a[data-page=live]').click()">
+      <div class="stat-icon"><i class="fa fa-comments" style="color:#e11d48"></i></div>
+      <div class="stat-value" id="stat-waiting">—</div>
+      <div class="stat-label">Waiting Live Chats</div>
     </div>
   </section>
 
@@ -726,12 +738,6 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
 
   <!-- Row 3: Charts — 3 equal columns -->
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px">
-    <div class="analytics-card" style="grid-column:1/3">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="margin:0"><i class="fa fa-chart-area" style="margin-right:8px;color:#2563eb"></i>Chat Activity</h3>
-      </div>
-      <canvas id="analyticsChart" height="90"></canvas>
-    </div>
     <div class="analytics-card">
       <h3><i class="fa fa-tags" style="margin-right:8px;color:#2563eb"></i>Intent Breakdown</h3>
       <div id="intent-chart" class="bar-chart"></div>
@@ -740,7 +746,7 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
       <h3><i class="fa fa-clock" style="margin-right:8px;color:#7c3aed"></i>Hourly Activity</h3>
       <div id="hourly-chart" class="line-chart-wrap"></div>
     </div>
-    <div class="analytics-card" style="grid-column:2/4">
+    <div class="analytics-card">
       <h3><i class="fa fa-calendar-week" style="margin-right:8px;color:#0d9488"></i>Activity by Day of Week</h3>
       <div id="daily-chart" class="line-chart-wrap"></div>
     </div>
@@ -1523,19 +1529,6 @@ function initAdmin(){
   loadHandoffQueue();
   startAutoRefresh();
 
-  // Chart.js for dashboard
-  if(document.getElementById('analyticsChart')){
-    const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/chart.js';
-    document.head.appendChild(s);
-    s.onload=()=>{
-      new Chart(document.getElementById('analyticsChart'),{
-        type:'line',
-        data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{label:'Chat Sessions',data:[12,19,9,25,17,29,22],borderColor:'#2563eb',tension:.4,fill:false}]},
-        options:{plugins:{legend:{display:true}},responsive:true}
-      });
-    };
-  }
-
   // Live chat queue polling
   setInterval(function(){
     const livePage=document.getElementById('live');
@@ -1544,6 +1537,7 @@ function initAdmin(){
 }
 
 // ===== DASHBOARD STATS =====
+var _dashLastUpdated = 0;
 async function loadDashboardStats(){
   const data=await apiFetch('/admin/api/stats');
   if(!data) return;
@@ -1553,9 +1547,25 @@ async function loadDashboardStats(){
     const vals=[data.total_sessions,data.total_messages,data.active_sessions,data.expired_sessions];
     if(el) el.textContent=vals[i];
   });
-  const dash=document.getElementById('dash-total'); if(dash) dash.textContent=data.total_sessions||0;
+  const todayEl=document.getElementById('stat-today'); if(todayEl) todayEl.textContent=data.sessions_today??'—';
+  const waitEl=document.getElementById('stat-waiting'); if(waitEl){
+    waitEl.textContent=data.waiting_live_chats??'—';
+    // Pulse red if anyone is waiting
+    const card=document.getElementById('stat-card-waiting');
+    if(card) card.style.background=(data.waiting_live_chats>0)?'#fff1f2':'';
+  }
   const sb=document.getElementById('sessions-banner-count'); if(sb) sb.textContent=data.total_sessions||0;
+  // Last updated
+  _dashLastUpdated=Date.now();
+  _updateLastUpdatedLabel();
 }
+function _updateLastUpdatedLabel(){
+  const el=document.getElementById('dash-last-updated'); if(!el) return;
+  if(!_dashLastUpdated){ el.textContent='—'; return; }
+  const secs=Math.round((Date.now()-_dashLastUpdated)/1000);
+  el.textContent='Updated '+(secs<5?'just now':secs+'s ago');
+}
+setInterval(_updateLastUpdatedLabel,5000);
 
 // ===== AUTO-REFRESH =====
 let lastStatsJson='', lastSessionsJson='', refreshTimer=null;
@@ -1570,6 +1580,9 @@ function startAutoRefresh(){
         const ids=['stat-total','stat-messages','stat-active','stat-expired'];
         const vals=[statsData.total_sessions,statsData.total_messages,statsData.active_sessions,statsData.expired_sessions];
         ids.forEach((id,i)=>{ const el=document.getElementById(id); if(el&&el.textContent!==String(vals[i])){ el.textContent=vals[i]; triggerFade(el); } });
+        const todayEl=document.getElementById('stat-today'); if(todayEl&&todayEl.textContent!==String(statsData.sessions_today??'')){ todayEl.textContent=statsData.sessions_today??'—'; triggerFade(todayEl); }
+        const waitEl=document.getElementById('stat-waiting'); if(waitEl&&waitEl.textContent!==String(statsData.waiting_live_chats??'')){ waitEl.textContent=statsData.waiting_live_chats??'—'; triggerFade(waitEl); const card=document.getElementById('stat-card-waiting'); if(card) card.style.background=(statsData.waiting_live_chats>0)?'#fff1f2':''; }
+        _dashLastUpdated=Date.now(); _updateLastUpdatedLabel();
       }
     }
     const listView=document.getElementById('list-view');

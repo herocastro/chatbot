@@ -158,6 +158,8 @@ class SessionStatsResponse(BaseModel):
     total_messages: int
     active_sessions: int
     expired_sessions: int
+    sessions_today: int = 0
+    waiting_live_chats: int = 0
 
 
 # --- Analytics Models ---

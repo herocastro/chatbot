@@ -1518,11 +1518,25 @@ class SessionStore:
                 "SELECT COALESCE(SUM(message_count), 0) AS total FROM sessions"
             ).fetchone()["total"]
 
+            # Sessions created in the last 24 hours
+            day_ago = time.time() - 86400
+            sessions_today = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM sessions WHERE created_at >= ?",
+                (day_ago,),
+            ).fetchone()["cnt"]
+
+            # Live chats currently waiting or active
+            waiting_live_chats = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM live_chat_sessions WHERE status IN ('waiting', 'active')"
+            ).fetchone()["cnt"]
+
             return SessionStatsResponse(
                 total_sessions=total_sessions,
                 total_messages=total_messages,
                 active_sessions=active,
                 expired_sessions=expired,
+                sessions_today=sessions_today,
+                waiting_live_chats=waiting_live_chats,
             )
         finally:
             conn.close()
