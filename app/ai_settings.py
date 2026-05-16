@@ -27,6 +27,8 @@ DEFAULT_WELCOME_MESSAGE = (
     "Hello, I'm {name} (Lorma Library Online Research Assistant), your virtual assistant. "
     "I'm here to provide the assistance you need. I'll be happy to serve you."
 )
+DEFAULT_AVATAR_URL = ""
+DEFAULT_PRIMARY_COLOR = "#0E553F"
 
 SETTINGS_KEY = "ai_settings_json"
 
@@ -47,11 +49,15 @@ class AiSettings:
         personality: str = DEFAULT_PERSONALITY,
         limitations: str = DEFAULT_LIMITATIONS,
         welcome_message: str = DEFAULT_WELCOME_MESSAGE,
+        avatar_url: str = DEFAULT_AVATAR_URL,
+        primary_color: str = DEFAULT_PRIMARY_COLOR,
     ) -> None:
         self.name = name.strip() or DEFAULT_AI_NAME
         self.personality = personality.strip() or DEFAULT_PERSONALITY
         self.limitations = limitations.strip() or DEFAULT_LIMITATIONS
         self.welcome_message = welcome_message.strip() or DEFAULT_WELCOME_MESSAGE
+        self.avatar_url = avatar_url.strip()
+        self.primary_color = primary_color.strip() or DEFAULT_PRIMARY_COLOR
 
     def build_system_prompt(self) -> str:
         """Build the full system prompt from the current settings."""
@@ -72,6 +78,8 @@ class AiSettings:
             "personality": self.personality,
             "limitations": self.limitations,
             "welcome_message": self.welcome_message,
+            "avatar_url": self.avatar_url,
+            "primary_color": self.primary_color,
         }
 
     @classmethod
@@ -81,6 +89,8 @@ class AiSettings:
             personality=data.get("personality", DEFAULT_PERSONALITY),
             limitations=data.get("limitations", DEFAULT_LIMITATIONS),
             welcome_message=data.get("welcome_message", DEFAULT_WELCOME_MESSAGE),
+            avatar_url=data.get("avatar_url", DEFAULT_AVATAR_URL),
+            primary_color=data.get("primary_color", DEFAULT_PRIMARY_COLOR),
         )
 
 

@@ -304,11 +304,13 @@ async def get_faqs():
 
 @app.get("/api/ai-config")
 async def get_ai_config():
-    """Return public AI config for the widget (name, welcome message)."""
+    """Return public AI config for the widget (name, welcome message, avatar, color)."""
     return JSONResponse(
         content={
             "name": ai_settings.name,
             "welcome_message": ai_settings.get_welcome_text(),
+            "avatar_url": ai_settings.avatar_url,
+            "primary_color": ai_settings.primary_color,
         },
         headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"},
     )

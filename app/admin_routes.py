@@ -250,6 +250,8 @@ async def update_ai_settings(payload: dict):
         personality=(payload.get("personality") or "").strip(),
         limitations=(payload.get("limitations") or "").strip(),
         welcome_message=(payload.get("welcome_message") or "").strip(),
+        avatar_url=(payload.get("avatar_url") or "").strip(),
+        primary_color=(payload.get("primary_color") or "").strip(),
     )
 
     try:

@@ -360,6 +360,21 @@ th{background:#f8fafc}
 .ai-preview-box{margin-top:20px;background:#f1f5f9;border-radius:16px;padding:16px 18px}
 .ai-preview-label{font-size:.78em;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
 .ai-preview-bubble{background:#fff;border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;font-size:.88em;color:#1e293b;line-height:1.5;max-width:80%;box-shadow:0 1px 3px rgba(0,0,0,.08);white-space:pre-wrap}
+.ai-profile-row{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.ai-avatar-preview{width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #e5e7eb;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden}
+.ai-avatar-preview img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ai-avatar-preview.placeholder::after{content:"🤖"}
+.ai-color-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ai-color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid #e5e7eb;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0}
+.ai-color-swatch:hover,.ai-color-swatch.selected{transform:scale(1.15);border-color:#2563eb}
+.ai-color-picker-wrap{display:flex;align-items:center;gap:8px}
+input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7eb;border-radius:50%;padding:2px;cursor:pointer;background:none}
+.ai-widget-preview{border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.12);max-width:320px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:.88rem}
+.ai-widget-preview-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;color:#fff;font-weight:600;font-size:.95rem}
+.ai-widget-preview-hdr-avatar{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.4);object-fit:cover;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;overflow:hidden}
+.ai-widget-preview-hdr-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ai-widget-preview-body{background:#fff;padding:12px 14px}
+.ai-widget-preview-bubble{background:#f0f0ec;border-radius:14px;border-bottom-left-radius:4px;padding:9px 13px;font-size:.85rem;color:#2d2d2d;line-height:1.45;display:inline-block;max-width:90%}
 /* ===== MANAGEMENT ===== */
 .mgmt-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .mgmt-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
@@ -445,6 +460,9 @@ th{background:#f8fafc}
 #adminPage.dark .li-faq-card-label{color:#f1f5f9}
 #adminPage.dark .quality-item{background:#1e293b;border-color:#334155}
 #adminPage.dark .ai-settings-section{background:#1e293b;border-color:#334155}
+#adminPage.dark .ai-avatar-preview{border-color:#334155;background:#0f172a}
+#adminPage.dark .ai-widget-preview-body{background:#1e293b}
+#adminPage.dark .ai-widget-preview-bubble{background:#334155;color:#f1f5f9}
 #adminPage.dark .handoff-item{background:#1e293b;border-color:#334155}
 #adminPage.dark .handoff-item:hover,#adminPage.dark .handoff-item.active{background:#1e3a5f;border-color:#2563eb}
 #adminPage.dark .perf-rating-card{background:#1e293b;border-color:#334155}
@@ -802,6 +820,51 @@ th{background:#f8fafc}
       </div>
     </div>
     <div class="ai-settings-grid">
+      <!-- Profile / Appearance -->
+      <div class="ai-settings-section">
+        <label class="ai-label"><i class="fa fa-palette" style="margin-right:6px;color:#7c3aed"></i>Profile &amp; Appearance</label>
+        <p class="ai-hint">Set the avatar image and brand color shown in the chat widget.</p>
+        <div class="ai-profile-row">
+          <!-- Avatar preview -->
+          <div class="ai-avatar-preview placeholder" id="ai-avatar-preview-wrap">
+            <img id="ai-avatar-preview-img" src="" alt="Avatar preview" style="display:none">
+          </div>
+          <div style="flex:1;min-width:200px">
+            <label class="ai-label" for="ai-avatar-url" style="font-size:.85em;margin-bottom:4px">Avatar Image URL</label>
+            <input type="url" id="ai-avatar-url" class="ai-input" placeholder="https://example.com/avatar.png" aria-label="Avatar image URL" style="margin-bottom:8px">
+            <p class="ai-hint" style="margin-bottom:8px">Paste a direct image URL, or upload a file below. Leave blank to use the default robot icon.</p>
+            <label class="ai-label" style="font-size:.85em;margin-bottom:4px">Or upload an image</label>
+            <input type="file" id="ai-avatar-file" accept="image/*" style="font-size:.82em;margin-bottom:12px;display:block">
+            <label class="ai-label" style="font-size:.85em;margin-bottom:6px">Brand Color</label>
+            <div class="ai-color-row">
+              <button type="button" class="ai-color-swatch" data-color="#0E553F" style="background:#0E553F" title="Library Green" aria-label="Library Green"></button>
+              <button type="button" class="ai-color-swatch" data-color="#1d4ed8" style="background:#1d4ed8" title="Royal Blue" aria-label="Royal Blue"></button>
+              <button type="button" class="ai-color-swatch" data-color="#7c3aed" style="background:#7c3aed" title="Purple" aria-label="Purple"></button>
+              <button type="button" class="ai-color-swatch" data-color="#b45309" style="background:#b45309" title="Amber" aria-label="Amber"></button>
+              <button type="button" class="ai-color-swatch" data-color="#be123c" style="background:#be123c" title="Rose" aria-label="Rose"></button>
+              <button type="button" class="ai-color-swatch" data-color="#0e7490" style="background:#0e7490" title="Teal" aria-label="Teal"></button>
+              <div class="ai-color-picker-wrap">
+                <input type="color" id="ai-primary-color" class="ai-color-input" value="#0E553F" aria-label="Custom brand color">
+                <span style="font-size:.78em;color:#94a3b8">Custom</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Widget preview -->
+        <div style="margin-top:16px">
+          <p class="ai-hint" style="margin-bottom:8px">Widget header preview:</p>
+          <div class="ai-widget-preview" id="ai-widget-preview">
+            <div class="ai-widget-preview-hdr" id="ai-widget-preview-hdr" style="background:#0E553F">
+              <div class="ai-widget-preview-hdr-avatar" id="ai-widget-preview-avatar">🤖</div>
+              <span id="ai-widget-preview-name">LLORA</span>
+            </div>
+            <div class="ai-widget-preview-body">
+              <div class="ai-widget-preview-bubble" id="ai-widget-preview-bubble"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Identity -->
       <div class="ai-settings-section">
         <label class="ai-label" for="ai-name"><i class="fa fa-robot" style="margin-right:6px;color:#7c3aed"></i>Assistant Name</label>
         <p class="ai-hint">The name shown in the widget header and used in responses.</p>
@@ -824,7 +887,7 @@ th{background:#f8fafc}
       </div>
     </div>
     <div class="ai-preview-box" id="ai-preview-box">
-      <div class="ai-preview-label">Preview</div>
+      <div class="ai-preview-label">Welcome Message Preview</div>
       <div class="ai-preview-bubble" id="ai-preview-bubble"></div>
     </div>
   </div>
@@ -1918,27 +1981,119 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeDraw
 async function loadAiSettings(){
   const data=await apiFetch('/admin/api/ai-settings');
   if(!data) return;
-  document.getElementById('ai-name').value=data.name||'';
-  document.getElementById('ai-personality').value=data.personality||'';
-  document.getElementById('ai-limitations').value=data.limitations||'';
-  document.getElementById('ai-welcome').value=data.welcome_message||'';
+  var nameEl=document.getElementById('ai-name');
+  var personalityEl=document.getElementById('ai-personality');
+  var limitationsEl=document.getElementById('ai-limitations');
+  var welcomeEl=document.getElementById('ai-welcome');
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  var colorEl=document.getElementById('ai-primary-color');
+  if(nameEl) nameEl.value=data.name||'';
+  if(personalityEl) personalityEl.value=data.personality||'';
+  if(limitationsEl) limitationsEl.value=data.limitations||'';
+  if(welcomeEl) welcomeEl.value=data.welcome_message||'';
+  if(avatarUrlEl){ avatarUrlEl.value=data.avatar_url||''; delete avatarUrlEl.dataset.dataUrl; }
+  var color=data.primary_color||'#0E553F';
+  if(colorEl) colorEl.value=color;
+  _syncColorSwatches(color);
   updateAiPreview();
 }
-function updateAiPreview(){
-  var name=document.getElementById('ai-name').value.trim()||'LLORA';
-  var welcome=document.getElementById('ai-welcome').value.trim();
-  if(!welcome) welcome="Hello, I'm {name}, your virtual library assistant. How can I help you today?";
-  document.getElementById('ai-preview-bubble').textContent=welcome.replace(/\{name\}/g,name);
+function _syncColorSwatches(color){
+  document.querySelectorAll('.ai-color-swatch').forEach(function(s){
+    s.classList.toggle('selected', s.dataset.color&&s.dataset.color.toLowerCase()===color.toLowerCase());
+  });
 }
-['ai-name','ai-welcome'].forEach(id=>document.getElementById(id).addEventListener('input',updateAiPreview));
+function updateAiPreview(){
+  var nameEl=document.getElementById('ai-name');
+  var welcomeEl=document.getElementById('ai-welcome');
+  var colorEl=document.getElementById('ai-primary-color');
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  if(!nameEl||!welcomeEl||!colorEl||!avatarUrlEl) return;
+  var name=nameEl.value.trim()||'LLORA';
+  var welcome=welcomeEl.value.trim();
+  if(!welcome) welcome="Hello, I'm {name}, your virtual library assistant. How can I help you today?";
+  var welcomeText=welcome.replace(/\{name\}/g,name);
+  var previewBubble=document.getElementById('ai-preview-bubble');
+  if(previewBubble) previewBubble.textContent=welcomeText;
+  // Widget header preview
+  var color=colorEl.value||'#0E553F';
+  var avatarUrl=avatarUrlEl.dataset.dataUrl||avatarUrlEl.value.trim();
+  var hdr=document.getElementById('ai-widget-preview-hdr');
+  if(hdr) hdr.style.background=color;
+  var nameSpan=document.getElementById('ai-widget-preview-name');
+  if(nameSpan) nameSpan.textContent=name;
+  var wBubble=document.getElementById('ai-widget-preview-bubble');
+  if(wBubble) wBubble.textContent=welcomeText;
+  // Avatar preview (large)
+  var previewWrap=document.getElementById('ai-avatar-preview-wrap');
+  var previewImg=document.getElementById('ai-avatar-preview-img');
+  var hdrAvatar=document.getElementById('ai-widget-preview-avatar');
+  if(avatarUrl){
+    if(previewImg){ previewImg.src=avatarUrl; previewImg.style.display='block'; }
+    if(previewWrap) previewWrap.classList.remove('placeholder');
+    if(hdrAvatar) hdrAvatar.innerHTML='<img src="'+avatarUrl+'" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+  } else {
+    if(previewImg) previewImg.style.display='none';
+    if(previewWrap) previewWrap.classList.add('placeholder');
+    if(hdrAvatar) hdrAvatar.textContent='🤖';
+  }
+}
+// Color swatch clicks
+document.querySelectorAll('.ai-color-swatch').forEach(function(s){
+  s.addEventListener('click',function(){
+    var color=s.dataset.color;
+    var colorEl=document.getElementById('ai-primary-color');
+    if(colorEl) colorEl.value=color;
+    _syncColorSwatches(color);
+    updateAiPreview();
+  });
+});
+(function(){
+  var ids=['ai-name','ai-welcome','ai-avatar-url'];
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('input',updateAiPreview);
+  });
+  var colorEl=document.getElementById('ai-primary-color');
+  if(colorEl) colorEl.addEventListener('input',function(){
+    _syncColorSwatches(this.value);
+    updateAiPreview();
+  });
+  var avatarFileEl=document.getElementById('ai-avatar-file');
+  if(avatarFileEl) avatarFileEl.addEventListener('change',function(){
+    var file=this.files&&this.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var urlEl=document.getElementById('ai-avatar-url');
+      // Store as data URL in the URL field temporarily for preview
+      // We'll upload it on save
+      if(urlEl){ urlEl.value=''; urlEl.dataset.dataUrl=e.target.result; }
+      var previewWrap=document.getElementById('ai-avatar-preview-wrap');
+      var previewImg=document.getElementById('ai-avatar-preview-img');
+      if(previewImg){ previewImg.src=e.target.result; previewImg.style.display='block'; }
+      if(previewWrap) previewWrap.classList.remove('placeholder');
+      var hdrAvatar=document.getElementById('ai-widget-preview-avatar');
+      if(hdrAvatar) hdrAvatar.innerHTML='<img src="'+e.target.result+'" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    };
+    reader.readAsDataURL(file);
+  });
+})();
 
 document.getElementById('ai-save-btn').addEventListener('click',async function(){
+  var avatarUrlEl=document.getElementById('ai-avatar-url');
+  var avatarVal=avatarUrlEl?(avatarUrlEl.dataset.dataUrl||avatarUrlEl.value.trim()):'';
   var payload={
-    name:document.getElementById('ai-name').value.trim(),
-    personality:document.getElementById('ai-personality').value.trim(),
-    limitations:document.getElementById('ai-limitations').value.trim(),
-    welcome_message:document.getElementById('ai-welcome').value.trim()
+    name:(document.getElementById('ai-name')||{}).value||'',
+    personality:(document.getElementById('ai-personality')||{}).value||'',
+    limitations:(document.getElementById('ai-limitations')||{}).value||'',
+    welcome_message:(document.getElementById('ai-welcome')||{}).value||'',
+    avatar_url:avatarVal,
+    primary_color:((document.getElementById('ai-primary-color')||{}).value||'#0E553F').trim()
   };
+  payload.name=payload.name.trim();
+  payload.personality=payload.personality.trim();
+  payload.limitations=payload.limitations.trim();
+  payload.welcome_message=payload.welcome_message.trim();
   var statusEl=document.getElementById('ai-save-status');
   if(!payload.name){ statusEl.textContent='✗ Name is required'; statusEl.style.color='#ef4444'; setTimeout(()=>statusEl.textContent='',3000); return; }
   try {
