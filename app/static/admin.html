@@ -610,7 +610,6 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
 <div class="menu">
   <a class="active" data-page="dashboard"><i class="fa fa-chart-line"></i>Dashboard</a>
   <a data-page="sessions"><i class="fa fa-layer-group"></i>Sessions</a>
-  <a data-page="analytics"><i class="fa fa-chart-area"></i>Analytics</a>
   <a data-page="quality"><i class="fa fa-magnifying-glass-chart"></i>Quality</a>
   <div style="margin:8px 16px;border-top:1px solid #e5e7eb;opacity:.5"></div>
   <a data-page="library"><i class="fa fa-book"></i>Library Info</a>
@@ -657,13 +656,50 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
     </div>
   </section>
   <div class="grid" style="margin-top:0">
-    <div class="box"><h3><i class="fa fa-chart-area" style="margin-right:8px;color:#2563eb"></i>Chat Analytics</h3><canvas id="analyticsChart" height="120"></canvas></div>
+    <div class="box"><h3><i class="fa fa-chart-area" style="margin-right:8px;color:#2563eb"></i>Chat Activity</h3><canvas id="analyticsChart" height="120"></canvas></div>
     <div class="box"><h3><i class="fa fa-star" style="margin-right:8px;color:#d97706"></i>Quick Stats</h3>
       <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
         <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Active now</span><span id="qs-active" style="font-weight:600;color:#16a34a">—</span></div>
         <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Expired</span><span id="qs-expired" style="font-weight:600;color:#d97706">—</span></div>
         <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Total messages</span><span id="qs-msgs" style="font-weight:600;color:#2563eb">—</span></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== ANALYTICS SECTION (merged) ===== -->
+  <div style="margin-top:28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#1e293b"><i class="fa fa-chart-area" style="margin-right:8px;color:#0d9488"></i>Usage Analytics</h3>
+      <div class="analytics-controls" style="margin:0;padding:0;background:none;border:none">
+        <label for="analytics-days">Time range:</label>
+        <select id="analytics-days" aria-label="Analytics time range">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last year</option>
+        </select>
+        <button id="analytics-refresh-btn" type="button"><i class="fa fa-rotate-right"></i> Refresh</button>
+      </div>
+    </div>
+    <section class="stats-panel" aria-label="Analytics summary" style="margin-bottom:20px">
+      <div class="stat-card" style="border-top-color:#2563eb"><div class="stat-value" id="analytics-total-msgs">—</div><div class="stat-label">User Messages</div></div>
+      <div class="stat-card" style="border-top-color:#7c3aed"><div class="stat-value" id="analytics-avg-msgs">—</div><div class="stat-label">Avg Msgs / Session</div></div>
+      <div class="stat-card" style="border-top-color:#dc2626"><div class="stat-value" id="analytics-failed">—</div><div class="stat-label">Failed Queries</div></div>
+      <div class="stat-card" style="border-top-color:#d97706"><div class="stat-value" id="analytics-fail-rate">—</div><div class="stat-label">Fail Rate</div></div>
+    </section>
+    <div class="analytics-grid">
+      <section class="analytics-card" aria-label="Intent breakdown">
+        <h3><i class="fa fa-tags" style="margin-right:8px;color:#2563eb"></i>Intent Breakdown</h3>
+        <div id="intent-chart" class="bar-chart"></div>
+      </section>
+      <section class="analytics-card" aria-label="Hourly activity">
+        <h3><i class="fa fa-clock" style="margin-right:8px;color:#7c3aed"></i>Hourly Activity</h3>
+        <div id="hourly-chart" class="line-chart-wrap"></div>
+      </section>
+      <section class="analytics-card" aria-label="Daily activity">
+        <h3><i class="fa fa-calendar-week" style="margin-right:8px;color:#0d9488"></i>Activity by Day of Week</h3>
+        <div id="daily-chart" class="line-chart-wrap"></div>
+      </section>
     </div>
   </div>
 </div><!-- end #dashboard -->
@@ -712,46 +748,6 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
     </div>
   </div>
 </div><!-- end #sessions -->
-<!-- ===== ANALYTICS PAGE ===== -->
-<div class="page" id="analytics">
-  <div class="page-banner" style="background:linear-gradient(135deg,#0f766e,#0d9488)">
-    <div>
-      <h2 class="pb-title"><i class="fa fa-chart-area"></i> Analytics</h2>
-      <p class="pb-desc">Understand chatbot usage patterns, intent breakdown, and failure rates over time.</p>
-    </div>
-  </div>
-  <div class="analytics-controls">
-    <label for="analytics-days">Time range:</label>
-    <select id="analytics-days" aria-label="Analytics time range">
-      <option value="7">Last 7 days</option>
-      <option value="30" selected>Last 30 days</option>
-      <option value="90">Last 90 days</option>
-      <option value="365">Last year</option>
-    </select>
-    <button id="analytics-refresh-btn" type="button"><i class="fa fa-rotate-right"></i> Refresh</button>
-  </div>
-  <section class="stats-panel" aria-label="Analytics summary">
-    <div class="stat-card" style="border-top-color:#2563eb"><div class="stat-value" id="analytics-total-msgs">—</div><div class="stat-label">User Messages</div></div>
-    <div class="stat-card" style="border-top-color:#7c3aed"><div class="stat-value" id="analytics-avg-msgs">—</div><div class="stat-label">Avg Msgs / Session</div></div>
-    <div class="stat-card" style="border-top-color:#dc2626"><div class="stat-value" id="analytics-failed">—</div><div class="stat-label">Failed Queries</div></div>
-    <div class="stat-card" style="border-top-color:#d97706"><div class="stat-value" id="analytics-fail-rate">—</div><div class="stat-label">Fail Rate</div></div>
-  </section>
-  <div class="analytics-grid">
-    <section class="analytics-card" aria-label="Intent breakdown">
-      <h3><i class="fa fa-tags" style="margin-right:8px;color:#2563eb"></i>Intent Breakdown</h3>
-      <div id="intent-chart" class="bar-chart"></div>
-    </section>
-    <section class="analytics-card" aria-label="Hourly activity">
-      <h3><i class="fa fa-clock" style="margin-right:8px;color:#7c3aed"></i>Hourly Activity</h3>
-      <div id="hourly-chart" class="line-chart-wrap"></div>
-    </section>
-    <section class="analytics-card" aria-label="Daily activity">
-      <h3><i class="fa fa-calendar-week" style="margin-right:8px;color:#0d9488"></i>Activity by Day of Week</h3>
-      <div id="daily-chart" class="line-chart-wrap"></div>
-    </section>
-  </div>
-</div><!-- end #analytics -->
-
 <!-- ===== QUALITY PAGE ===== -->
 <div class="page" id="quality">
   <div class="page-banner" style="background:linear-gradient(135deg,#6d28d9,#7c3aed)">
@@ -1448,7 +1444,6 @@ function initAdmin(){
     const pg=document.getElementById(x.dataset.page);
     if(pg) pg.classList.add('active');
     if(x.dataset.page==='sessions') loadSessions();
-    if(x.dataset.page==='analytics') loadAnalytics();
     if(x.dataset.page==='quality') loadQuality();
     if(x.dataset.page==='library') loadLibraryInfo();
     if(x.dataset.page==='ai') loadAiSettings();
@@ -1457,7 +1452,7 @@ function initAdmin(){
     if(x.dataset.page==='performance'){ loadStaffRatings(); loadLiveChatHistory(); }
     if(x.dataset.page==='staff') loadContacts();
     if(x.dataset.page==='management') loadFlaggedSessions();
-    if(x.dataset.page==='dashboard') loadDashboardStats();
+    if(x.dataset.page==='dashboard'){ loadDashboardStats(); loadAnalytics(); }
   }));
 
   // Admin dark mode toggle
@@ -1480,6 +1475,7 @@ function initAdmin(){
 
   // Load initial data
   loadDashboardStats();
+  loadAnalytics();
   loadSessions();
   loadHandoffQueue();
   startAutoRefresh();
