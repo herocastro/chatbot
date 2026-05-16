@@ -1343,12 +1343,21 @@ const loginError = document.getElementById('login-error');
 
 // ===== API FETCH HELPER =====
 async function apiFetch(path, options){
+  const silent = options && options.silent;
   try {
-    const resp = await fetch(path, Object.assign({ headers:{'X-Admin-Key':getKey()} }, options||{}));
+    const opts = Object.assign({ headers:{'X-Admin-Key':getKey()} }, options||{});
+    delete opts.silent;
+    const resp = await fetch(path, opts);
     if(resp.status===401){ openToast('Session expired. Please log in again.',true); doLogout(); return null; }
-    if(!resp.ok){ const e=await resp.json().catch(()=>({})); openToast(e.error||'Request failed: '+resp.status,true); return null; }
+    if(!resp.ok){
+      if(!silent){ const e=await resp.json().catch(()=>({})); openToast(e.error||'Request failed: '+resp.status,true); }
+      return null;
+    }
     return await resp.json();
-  } catch(e){ openToast('Network error: '+e.message,true); return null; }
+  } catch(e){
+    if(!silent) openToast('Network error: '+e.message,true);
+    return null;
+  }
 }
 
 // ===== HELPERS =====
@@ -1572,7 +1581,7 @@ let lastStatsJson='', lastSessionsJson='', refreshTimer=null;
 function startAutoRefresh(){
   stopAutoRefresh();
   refreshTimer=setInterval(async function(){
-    const statsData=await apiFetch('/admin/api/stats');
+    const statsData=await apiFetch('/admin/api/stats',{silent:true});
     if(statsData){
       const sj=JSON.stringify(statsData);
       if(sj!==lastStatsJson){
@@ -1591,7 +1600,7 @@ function startAutoRefresh(){
       params.set('page',currentPage); params.set('page_size',pageSize);
       const st=document.getElementById('status-filter'); if(st&&st.value) params.set('status',st.value);
       const si=document.getElementById('search-input'); if(si&&si.value.trim()) params.set('search',si.value.trim());
-      const sessData=await apiFetch('/admin/api/sessions?'+params.toString());
+      const sessData=await apiFetch('/admin/api/sessions?'+params.toString(),{silent:true});
       if(sessData){ const ssj=JSON.stringify(sessData); if(ssj!==lastSessionsJson){ lastSessionsJson=ssj; renderSessionTable(sessData.sessions); updatePagination(sessData.total); triggerFade(document.getElementById('session-tbody')); } }
     }
   },5000);

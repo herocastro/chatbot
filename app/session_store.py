@@ -1518,17 +1518,27 @@ class SessionStore:
                 "SELECT COALESCE(SUM(message_count), 0) AS total FROM sessions"
             ).fetchone()["total"]
 
-            # Sessions created in the last 24 hours
-            day_ago = time.time() - 86400
-            sessions_today = conn.execute(
-                "SELECT COUNT(*) AS cnt FROM sessions WHERE created_at >= ?",
-                (day_ago,),
-            ).fetchone()["cnt"]
+            # Sessions created in the last 24 hours — gracefully handle missing column
+            sessions_today = 0
+            try:
+                day_ago = time.time() - 86400
+                row = conn.execute(
+                    "SELECT COUNT(*) AS cnt FROM sessions WHERE created_at >= ?",
+                    (day_ago,),
+                ).fetchone()
+                sessions_today = row["cnt"] if row else 0
+            except Exception:
+                logger.debug("sessions.created_at not available, skipping sessions_today")
 
-            # Live chats currently waiting or active
-            waiting_live_chats = conn.execute(
-                "SELECT COUNT(*) AS cnt FROM live_chat_sessions WHERE status IN ('waiting', 'active')"
-            ).fetchone()["cnt"]
+            # Live chats currently waiting or active — gracefully handle missing table
+            waiting_live_chats = 0
+            try:
+                row = conn.execute(
+                    "SELECT COUNT(*) AS cnt FROM live_chat_sessions WHERE status IN ('waiting', 'active')"
+                ).fetchone()
+                waiting_live_chats = row["cnt"] if row else 0
+            except Exception:
+                logger.debug("live_chat_sessions not available, skipping waiting_live_chats")
 
             return SessionStatsResponse(
                 total_sessions=total_sessions,
