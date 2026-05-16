@@ -1470,6 +1470,26 @@ class SessionStore:
                 for m in msg_rows
             ]
 
+            # Merge live chat messages (patron ↔ librarian) into the transcript
+            lc_rows = conn.execute(
+                """SELECT lcm.role, lcm.content, lcm.timestamp
+                   FROM live_chat_messages lcm
+                   JOIN live_chat_sessions lcs ON lcs.id = lcm.live_chat_id
+                   WHERE lcs.parent_session_id = ?
+                   ORDER BY lcm.timestamp ASC, lcm.id ASC""",
+                (session_id,),
+            ).fetchall()
+
+            for m in lc_rows:
+                # Map live-chat roles to display roles
+                role = "librarian" if m["role"] == "librarian" else "user"
+                messages.append(
+                    MessageRecord(role=role, content=m["content"], timestamp=m["timestamp"])
+                )
+
+            # Re-sort the merged list by timestamp so everything is chronological
+            messages.sort(key=lambda m: m.timestamp)
+
             return SessionDetail(
                 session_id=row["session_id"],
                 created_at=row["created_at"],

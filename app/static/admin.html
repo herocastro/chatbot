@@ -1706,9 +1706,13 @@ async function openDetail(sessionId){
   if(!data.messages||!data.messages.length){ msgs.innerHTML='<p style="color:#94a3b8">No messages in this session.</p>'; return; }
   data.messages.forEach(function(m){
     const div=document.createElement('article');
-    const isBot=m.role==='assistant';
-    div.className='message '+(isBot?'message-assistant':'message-user');
-    div.innerHTML='<div class="msg-meta">'+escapeHtml(isBot?'Assistant':'Patron')+' — '+formatTime(m.timestamp)+'</div><div>'+escapeHtml(m.content)+'</div>';
+    var cls='message ';
+    var label='';
+    if(m.role==='assistant'){ cls+='message-assistant'; label='🤖 Assistant'; }
+    else if(m.role==='librarian'){ cls+='message-librarian'; label='👩‍💼 Librarian'; }
+    else { cls+='message-user'; label='👤 Patron'; }
+    div.className=cls;
+    div.innerHTML='<div class="msg-meta">'+escapeHtml(label)+' — '+formatTime(m.timestamp)+'</div><div>'+escapeHtml(m.content)+'</div>';
     msgs.appendChild(div);
   });
 }
