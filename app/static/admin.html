@@ -500,9 +500,9 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
 #adminPage.dark .perf-summary-num{color:#f1f5f9}
 #adminPage.dark .staff-rating-card{background:#1e293b;border-color:#334155}
 #adminPage.dark .staff-rating-card .src-name{color:#f1f5f9}
-#adminPage.dark #confirmModal>div,#adminPage.dark #staffModal>div{background:#1e293b}
-#adminPage.dark #confirmModal h2,#adminPage.dark #staffModal h2{color:#f1f5f9}
-#adminPage.dark #confirmModal p,#adminPage.dark #staffModal p{color:#cbd5e1}
+#adminPage.dark #confirmModal>div,#adminPage.dark #staffModal>div,#adminPage.dark #promptModal>div{background:#1e293b}
+#adminPage.dark #confirmModal h2,#adminPage.dark #staffModal h2,#adminPage.dark #promptModal h2{color:#f1f5f9}
+#adminPage.dark #confirmModal p,#adminPage.dark #staffModal p,#adminPage.dark #promptModal p{color:#cbd5e1}
 #adminPage.dark #staffModal label{color:#cbd5e1}
 #adminPage.dark #sessionModal>div,#adminPage.dark #lchModal>div{background:#1e293b}
 #adminPage.dark #sessionModal h2,#adminPage.dark #lchModal h2{color:#f1f5f9}
@@ -1270,6 +1270,19 @@ input[type="color"].ai-color-input{width:36px;height:36px;border:2px solid #e5e7
   </div>
 </div>
 
+<!-- ===== PROMPT MODAL ===== -->
+<div id="promptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;justify-content:center;align-items:center">
+  <div style="background:#fff;border-radius:24px;padding:28px;width:420px;max-width:95%;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+    <h2 id="promptModalTitle" style="margin:0 0 8px;font-size:18px"></h2>
+    <p id="promptModalDesc" style="color:#64748b;font-size:13px;margin:0 0 16px;line-height:1.5"></p>
+    <input id="promptModalInput" type="text" placeholder="" style="width:100%;padding:10px 14px;border:1px solid #dbe3ef;border-radius:12px;font-size:.92em;font-family:'Poppins',sans-serif;margin:0;box-sizing:border-box">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button id="promptModalCancel" style="background:#64748b">Cancel</button>
+      <button id="promptModalOk" style="background:#2563eb">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== STAFF MODAL ===== -->
 <div id="staffModal">
   <div style="width:480px;max-width:95%;border-radius:24px">
@@ -1689,9 +1702,17 @@ async function openDetail(sessionId){
       await fetch('/admin/api/sessions/'+encodeURIComponent(sessionId)+'/flag',{method:'DELETE',headers:{'X-Admin-Key':apiKey}});
       flagBtn.classList.remove('flagged'); flagBtn.textContent='🏳️ Flag'; flagBtn.title='Flag this session';
     } else {
-      const note=prompt('Add a note (optional):','')||'';
-      await fetch('/admin/api/sessions/'+encodeURIComponent(sessionId)+'/flag',{method:'POST',headers:{'X-Admin-Key':apiKey,'Content-Type':'application/json'},body:JSON.stringify({note})});
-      flagBtn.classList.add('flagged'); flagBtn.textContent='🚩 Flagged'; flagBtn.title=note||'Flagged';
+      openPromptModal({
+        title:'Flag Session',
+        desc:'Add an optional note about why this session is being flagged.',
+        placeholder:'e.g. Inappropriate language, needs follow-up…',
+        okText:'Flag',
+        okBg:'#d97706',
+        onOk:async function(note){
+          await fetch('/admin/api/sessions/'+encodeURIComponent(sessionId)+'/flag',{method:'POST',headers:{'X-Admin-Key':apiKey,'Content-Type':'application/json'},body:JSON.stringify({note})});
+          flagBtn.classList.add('flagged'); flagBtn.textContent='🚩 Flagged'; flagBtn.title=note||'Flagged';
+        }
+      });
     }
   });
   flagDd.appendChild(flagBtn);
@@ -2210,27 +2231,41 @@ document.getElementById('export-btn').addEventListener('click',function(){
 
 document.getElementById('cleanup-btn').addEventListener('click',async function(){
   var days=document.getElementById('cleanup-days').value;
-  if(!confirm('This will permanently delete all expired sessions older than '+days+' days. Continue?')) return;
-  var statusEl=document.getElementById('cleanup-status');
-  try {
-    var resp=await fetch('/admin/api/cleanup?older_than_days='+days,{method:'DELETE',headers:{'X-Admin-Key':apiKey}});
-    var data=await resp.json();
-    if(resp.ok){ statusEl.textContent='✓ Deleted '+data.deleted_sessions+' sessions'; statusEl.style.color='#16a34a'; loadDashboardStats(); loadSessions(); openToast('Cleanup complete'); }
-    else { statusEl.textContent='✗ '+(data.error||'Cleanup failed'); statusEl.style.color='#ef4444'; }
-  } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
-  setTimeout(()=>statusEl.textContent='',5000);
+  openConfirmModal({
+    icon:'fa-trash',iconBg:'#fff7ed',iconColor:'#d97706',
+    title:'Delete Expired Sessions',
+    message:'This will permanently delete all expired sessions older than <strong>'+days+' days</strong>. This cannot be undone.',
+    confirmText:'Delete',confirmBg:'#ef4444',
+    onConfirm:async function(){
+      var statusEl=document.getElementById('cleanup-status');
+      try {
+        var resp=await fetch('/admin/api/cleanup?older_than_days='+days,{method:'DELETE',headers:{'X-Admin-Key':apiKey}});
+        var data=await resp.json();
+        if(resp.ok){ statusEl.textContent='✓ Deleted '+data.deleted_sessions+' sessions'; statusEl.style.color='#16a34a'; loadDashboardStats(); loadSessions(); openToast('Cleanup complete'); }
+        else { statusEl.textContent='✗ '+(data.error||'Cleanup failed'); statusEl.style.color='#ef4444'; }
+      } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
+      setTimeout(()=>statusEl.textContent='',5000);
+    }
+  });
 });
 
 document.getElementById('delete-all-btn').addEventListener('click',async function(){
-  if(!confirm('⚠️ This will permanently delete ALL sessions. This cannot be undone. Continue?')) return;
-  var statusEl=document.getElementById('delete-all-status');
-  try {
-    var resp=await fetch('/admin/api/cleanup/all',{method:'DELETE',headers:{'X-Admin-Key':apiKey}});
-    var data=await resp.json();
-    if(resp.ok){ statusEl.textContent='✓ Deleted '+data.deleted_sessions+' sessions'; statusEl.style.color='#16a34a'; loadDashboardStats(); loadSessions(); openToast('All sessions deleted'); }
-    else { statusEl.textContent='✗ '+(data.error||'Delete failed'); statusEl.style.color='#ef4444'; }
-  } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
-  setTimeout(()=>statusEl.textContent='',5000);
+  openConfirmModal({
+    icon:'fa-circle-exclamation',iconBg:'#fef2f2',iconColor:'#ef4444',
+    title:'Delete ALL Sessions',
+    message:'This will permanently remove <strong>every session record</strong> from the database. This cannot be undone.',
+    confirmText:'Delete Everything',confirmBg:'#ef4444',
+    onConfirm:async function(){
+      var statusEl=document.getElementById('delete-all-status');
+      try {
+        var resp=await fetch('/admin/api/cleanup/all',{method:'DELETE',headers:{'X-Admin-Key':apiKey}});
+        var data=await resp.json();
+        if(resp.ok){ statusEl.textContent='✓ Deleted '+data.deleted_sessions+' sessions'; statusEl.style.color='#16a34a'; loadDashboardStats(); loadSessions(); openToast('All sessions deleted'); }
+        else { statusEl.textContent='✗ '+(data.error||'Delete failed'); statusEl.style.color='#ef4444'; }
+      } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
+      setTimeout(()=>statusEl.textContent='',5000);
+    }
+  });
 });
 
 var flPage=1;
@@ -2387,15 +2422,22 @@ document.getElementById('lch-back-btn').addEventListener('click',function(){
 });
 
 document.getElementById('lch-delete-all-btn').addEventListener('click',async function(){
-  if(!confirm('Delete all live chat history? This cannot be undone.')) return;
-  var statusEl=document.getElementById('lch-delete-status');
-  try {
-    var resp=await fetch('/admin/api/live-chat-history',{method:'DELETE',headers:{'X-Admin-Key':getKey()}});
-    var data=await resp.json();
-    if(resp.ok){ statusEl.textContent='✓ Deleted '+(data.deleted||0)+' records'; statusEl.style.color='#16a34a'; loadLiveChatHistory(); }
-    else { statusEl.textContent='✗ '+(data.error||'Failed'); statusEl.style.color='#ef4444'; }
-  } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
-  setTimeout(()=>statusEl.textContent='',5000);
+  openConfirmModal({
+    icon:'fa-trash-can',iconBg:'#fef2f2',iconColor:'#ef4444',
+    title:'Delete Live Chat History',
+    message:'This will permanently delete <strong>all live chat history</strong> records. This cannot be undone.',
+    confirmText:'Delete All',confirmBg:'#ef4444',
+    onConfirm:async function(){
+      var statusEl=document.getElementById('lch-delete-status');
+      try {
+        var resp=await fetch('/admin/api/live-chat-history',{method:'DELETE',headers:{'X-Admin-Key':getKey()}});
+        var data=await resp.json();
+        if(resp.ok){ statusEl.textContent='✓ Deleted '+(data.deleted||0)+' records'; statusEl.style.color='#16a34a'; loadLiveChatHistory(); }
+        else { statusEl.textContent='✗ '+(data.error||'Failed'); statusEl.style.color='#ef4444'; }
+      } catch(e){ statusEl.textContent='✗ Network error'; statusEl.style.color='#ef4444'; }
+      setTimeout(()=>statusEl.textContent='',5000);
+    }
+  });
 });
 // ===== NOTIFY STAFF TAB =====
 (function(){
@@ -2456,8 +2498,17 @@ document.getElementById('lch-delete-all-btn').addEventListener('click',async fun
     if(action==='deactivate'){ await fetch('/admin/api/staff-contacts/'+id,{method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Key':getKey()},body:JSON.stringify({is_active:false})}); }
     else if(action==='activate'){ await fetch('/admin/api/staff-contacts/'+id,{method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Key':getKey()},body:JSON.stringify({is_active:true})}); }
     else if(action==='delete'){
-      if(!confirm('Delete '+name+'? They will no longer receive notifications.')) return;
-      await fetch('/admin/api/staff-contacts/'+id,{method:'DELETE',headers:{'X-Admin-Key':getKey()}});
+      openConfirmModal({
+        icon:'fa-user-minus',iconBg:'#fef2f2',iconColor:'#ef4444',
+        title:'Remove Contact',
+        message:'Remove <strong>'+escapeHtml(name)+'</strong>? They will no longer receive librarian notifications.',
+        confirmText:'Remove',confirmBg:'#ef4444',
+        onConfirm:async function(){
+          await fetch('/admin/api/staff-contacts/'+id,{method:'DELETE',headers:{'X-Admin-Key':getKey()}});
+          loadContacts();
+        }
+      });
+      return;
     }
     loadContacts();
   }
@@ -2571,13 +2622,20 @@ document.getElementById('lch-delete-all-btn').addEventListener('click',async fun
 
   async function endHandoff(){
     if(!activeHandoffSid) return;
-    if(!confirm('Force-end this chat? The patron will be returned to the bot.')) return;
-    try {
-      await fetch('/admin/api/live-chat/'+encodeURIComponent(activeHandoffSid)+'/end',{method:'POST',headers:{'X-Admin-Key':getKey()}});
-      stopHandoffPoll(); activeHandoffSid=null;
-      handoffMessages.innerHTML=''; handoffChatHeader.innerHTML='<span>Chat ended. Select another session.</span>'; handoffInputBar.style.display='none';
-      await loadHandoffQueue();
-    } catch(e){ console.error('Failed to end handoff',e); }
+    openConfirmModal({
+      icon:'fa-circle-stop',iconBg:'#fef2f2',iconColor:'#ef4444',
+      title:'End Live Chat',
+      message:'Force-end this chat session? The patron will be returned to the AI assistant.',
+      confirmText:'End Chat',confirmBg:'#ef4444',
+      onConfirm:async function(){
+        try {
+          await fetch('/admin/api/live-chat/'+encodeURIComponent(activeHandoffSid)+'/end',{method:'POST',headers:{'X-Admin-Key':getKey()}});
+          stopHandoffPoll(); activeHandoffSid=null;
+          handoffMessages.innerHTML=''; handoffChatHeader.innerHTML='<span>Chat ended. Select another session.</span>'; handoffInputBar.style.display='none';
+          await loadHandoffQueue();
+        } catch(e){ console.error('Failed to end handoff',e); }
+      }
+    });
   }
 
   handoffSendBtn.addEventListener('click',sendReply);
@@ -2598,6 +2656,29 @@ function openConfirmModal({icon,iconBg,iconColor,title,message,confirmText,confi
   document.getElementById('confirmModal').style.display='flex';
 }
 window.closeConfirmModal=()=>document.getElementById('confirmModal').style.display='none';
+
+// ===== PROMPT MODAL =====
+var _promptCallback=null;
+function openPromptModal({title,desc,placeholder,okText,okBg,onOk}){
+  document.getElementById('promptModalTitle').textContent=title||'';
+  document.getElementById('promptModalDesc').textContent=desc||'';
+  var inp=document.getElementById('promptModalInput');
+  inp.placeholder=placeholder||'';
+  inp.value='';
+  var okBtn=document.getElementById('promptModalOk');
+  okBtn.textContent=okText||'OK';
+  okBtn.style.background=okBg||'#2563eb';
+  _promptCallback=function(){
+    var val=inp.value.trim();
+    document.getElementById('promptModal').style.display='none';
+    onOk(val);
+  };
+  document.getElementById('promptModal').style.display='flex';
+  setTimeout(function(){ inp.focus(); },50);
+}
+document.getElementById('promptModalOk').addEventListener('click',function(){ if(_promptCallback) _promptCallback(); });
+document.getElementById('promptModalCancel').addEventListener('click',function(){ document.getElementById('promptModal').style.display='none'; });
+document.getElementById('promptModalInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&_promptCallback) _promptCallback(); if(e.key==='Escape') document.getElementById('promptModal').style.display='none'; });
 
 // ===== STAFF MODAL =====
 let _staffList=[];
