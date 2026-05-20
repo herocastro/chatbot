@@ -43,8 +43,8 @@ def set_session_store(store: SessionStore) -> None:
 @login_router.post("/login", response_model=LoginResponse)
 async def admin_login(request: LoginRequest):
     """Validate credentials and return the API key."""
-    expected_user = os.environ.get("ADMIN_USERNAME", "admin")
-    expected_pass = os.environ.get("ADMIN_PASSWORD", "hero123")
+    expected_user = os.environ.get("ADMIN_USERNAME", "chatbot2026")
+    expected_pass = os.environ.get("ADMIN_PASSWORD", "librarian2026")
 
     if request.username == expected_user and request.password == expected_pass:
         api_key = os.environ.get("ADMIN_API_KEY", "")
